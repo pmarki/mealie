@@ -14,6 +14,7 @@ services:
       - 9091:9000
     environment:
       ALLOW_SIGNUP: "false"
+      NO_AUTH_ENABLED: "true"
       LOG_LEVEL: "DEBUG"
 
       DB_ENGINE: sqlite # Optional: 'sqlite', 'postgres'

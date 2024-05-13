@@ -150,6 +150,11 @@ class AppSettings(BaseSettings):
         return "" not in required and None not in required
 
     # ===============================================
+    # No auth Configuration
+
+    NO_AUTH_ENABLED: bool = False
+
+    # ===============================================
     # LDAP Configuration
 
     LDAP_AUTH_ENABLED: bool = False

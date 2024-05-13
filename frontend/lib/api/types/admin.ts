@@ -13,6 +13,7 @@ export interface AdminAboutInfo {
   enableOidc: boolean;
   oidcRedirect: boolean;
   oidcProviderName: string;
+  noAuthLogin: boolean;
   versionLatest: string;
   apiPort: number;
   apiDocs: boolean;
@@ -40,6 +41,7 @@ export interface AppInfo {
   enableOidc: boolean;
   oidcRedirect: boolean;
   oidcProviderName: string;
+  noAuthLogin: boolean;
 }
 export interface AppStartupInfo {
   isFirstLogin: boolean;

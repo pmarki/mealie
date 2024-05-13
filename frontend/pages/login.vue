@@ -189,6 +189,13 @@ export default defineComponent({
     const allowOidc = computed(() => appInfo.value?.enableOidc || false);
     const oidcRedirect = computed(() => appInfo.value?.oidcRedirect || false);
     const oidcProviderName = computed(() => appInfo.value?.oidcProviderName || "OAuth")
+    const noAuthLogin = computed(() => appInfo.value?.noAuthLogin || false);
+
+    whenever(
+      () => noAuthLogin.value,
+      () => noAuthAuthenticate(),
+      {immediate: true}
+    )
 
     whenever(
         () => allowOidc.value && oidcRedirect.value && !isCallback() && !isDirectLogin() && !$auth.check().valid,
@@ -202,6 +209,14 @@ export default defineComponent({
 
     function isDirectLogin() {
         return Object.keys(router.currentRoute.query).includes("direct")
+    }
+
+    async function noAuthAuthenticate() {
+      try {
+            await $auth.loginWith("local", { data: {"username": "*", "password": "*"}})
+        } catch (error) {
+            alert.error(i18n.t("events.something-went-wrong") as string);
+        }
     }
 
     async function oidcAuthenticate() {

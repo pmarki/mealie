@@ -18,6 +18,7 @@ class AppInfo(MealieModel):
     enable_oidc: bool
     oidc_redirect: bool
     oidc_provider_name: str
+    no_auth_login: bool
 
 
 class AppTheme(MealieModel):

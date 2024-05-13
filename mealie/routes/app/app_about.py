@@ -32,6 +32,7 @@ def get_app_info(session: Session = Depends(generate_session)):
         enable_oidc=settings.OIDC_READY,
         oidc_redirect=settings.OIDC_AUTO_REDIRECT,
         oidc_provider_name=settings.OIDC_PROVIDER_NAME,
+        no_auth_login=settings.NO_AUTH_ENABLED,
     )
 
 

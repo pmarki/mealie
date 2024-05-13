@@ -33,6 +33,7 @@ class AdminAboutController(BaseAdminController):
             enable_oidc=settings.OIDC_AUTH_ENABLED,
             oidc_redirect=settings.OIDC_AUTO_REDIRECT,
             oidc_provider_name=settings.OIDC_PROVIDER_NAME,
+            no_auth_login=settings.NO_AUTH_ENABLED,
         )
 
     @router.get("/statistics", response_model=AppStatistics)
