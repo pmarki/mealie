@@ -7,7 +7,7 @@
       {{ $t("recipe.comments") }}
     </v-card-title>
     <v-divider class="mx-2"></v-divider>
-    <div v-if="user.id" class="d-flex flex-column">
+    <div v-if="user.id" class="d-flex flex-column pa-3">
       <div class="d-flex mt-3" style="gap: 10px">
         <UserAvatar size="40" :user-id="user.id" />
 
