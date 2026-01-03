@@ -59,7 +59,7 @@
         <v-icon> {{ $globals.icons.search }}</v-icon>
       </v-btn>
       <v-btn
-        v-if="loggedIn && noAuthLogin.value"
+        v-if="loggedIn && noAuthLogin"
         :variant="smAndUp ? 'text' : undefined"
         :icon="xs"
         @click="logout()"
@@ -87,7 +87,7 @@
 <script lang="ts">
 import { useLoggedInState } from "~/composables/use-logged-in-state";
 import RecipeDialogSearch from "~/components/Domain/Recipe/RecipeDialogSearch.vue";
-import { useAppInfo } from "~/composables/api";
+// import { useAppInfo } from "~/composables/api";
 
 export default defineNuxtComponent({
   components: { RecipeDialogSearch },
@@ -107,8 +107,8 @@ export default defineNuxtComponent({
     const routerLink = computed(() => groupSlug.value ? `/g/${groupSlug.value}` : "/");
     const domSearchDialog = ref<InstanceType<typeof RecipeDialogSearch> | null>(null);
 
-    const appInfo = useAppInfo();
-    const noAuthLogin = computed(() => appInfo.value?.noAuthLogin || false);
+    // const appInfo = useAppInfo();
+    const noAuthLogin = true; //computed(() => appInfo.value?.noAuthLogin || false);
 
     function activateSearch() {
       domSearchDialog.value?.open();
