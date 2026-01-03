@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated, Any, ClassVar
 from uuid import uuid4
 
-from pydantic import UUID4, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import UUID4, BaseModel, ConfigDict, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
 from slugify import slugify
 from sqlalchemy import Select, desc, func, or_, select, text
@@ -14,7 +14,10 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
 from mealie.core.config import get_app_dirs
+from mealie.core.exceptions import SlugError
+from mealie.db.models.users.users import User
 from mealie.schema._mealie import MealieModel, SearchType
+from mealie.schema._mealie.mealie_model import UpdatedAtField
 from mealie.schema.response.pagination import PaginationBase
 
 from ...db.models.recipe import (
@@ -34,8 +37,30 @@ from .recipe_step import RecipeStep
 app_dirs = get_app_dirs()
 
 
+def create_recipe_slug(name: str, max_length: int = 250) -> str:
+    """Generate a slug from a recipe name, truncating to a reasonable length.
+
+    Args:
+        name: The recipe name to create a slug from
+        max_length: Maximum length for the slug (default: 250)
+
+    Returns:
+        A truncated slug string
+
+    Raises:
+        ValueError: If the name cannot be converted to a valid slug
+    """
+    generated_slug = slugify(name)
+    if not generated_slug:
+        raise SlugError("Recipe name cannot be empty or contain only special characters")
+    if len(generated_slug) > max_length:
+        generated_slug = generated_slug[:max_length]
+    return generated_slug
+
+
 class RecipeTag(MealieModel):
     id: UUID4 | None = None
+    group_id: UUID4 | None = None
     name: str
     slug: str
 
@@ -57,7 +82,17 @@ class RecipeCategoryPagination(PaginationBase):
 
 class RecipeTool(RecipeTag):
     id: UUID4
-    on_hand: bool = False
+    households_with_tool: list[str] = []
+
+    @field_validator("households_with_tool", mode="before")
+    def convert_households_to_slugs(cls, v):
+        if not v:
+            return []
+
+        try:
+            return [household.slug for household in v]
+        except AttributeError:
+            return v
 
 
 class RecipeToolPagination(PaginationBase):
@@ -82,12 +117,15 @@ class RecipeSummary(MealieModel):
     id: UUID4 | None = None
     _normalize_search: ClassVar[bool] = True
 
-    user_id: UUID4 = Field(default_factory=uuid4, validate_default=True)
-    group_id: UUID4 = Field(default_factory=uuid4, validate_default=True)
+    user_id: Annotated[UUID4, Field(default_factory=uuid4, validate_default=True)]
+    household_id: Annotated[UUID4, Field(default_factory=uuid4, validate_default=True)]
+    group_id: Annotated[UUID4, Field(default_factory=uuid4, validate_default=True)]
 
     name: str | None = None
     slug: Annotated[str, Field(validate_default=True)] = ""
     image: Any | None = None
+    recipe_servings: float = 0
+    recipe_yield_quantity: float = 0
     recipe_yield: str | None = None
 
     total_time: str | None = None
@@ -96,7 +134,7 @@ class RecipeSummary(MealieModel):
     perform_time: str | None = None
 
     description: str | None = ""
-    recipe_category: Annotated[list[RecipeCategory] | None, Field(validate_default=True)] | None = []
+    recipe_category: Annotated[list[RecipeCategory] | None, Field(validate_default=True)] = []
     tags: Annotated[list[RecipeTag] | None, Field(validate_default=True)] = []
     tools: list[RecipeTool] = []
     rating: float | None = None
@@ -106,7 +144,7 @@ class RecipeSummary(MealieModel):
     date_updated: datetime.datetime | None = None
 
     created_at: datetime.datetime | None = None
-    update_at: datetime.datetime | None = None
+    updated_at: datetime.datetime | None = UpdatedAtField(None)
     last_made: datetime.datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
@@ -118,6 +156,19 @@ class RecipeSummary(MealieModel):
             return str(val)
 
         return val
+
+    @property
+    def recipe_yield_display(self) -> str:
+        return f"{self.recipe_yield_quantity} {self.recipe_yield}".strip()
+
+    @classmethod
+    def loader_options(cls) -> list[LoaderOption]:
+        return [
+            joinedload(RecipeModel.recipe_category),
+            joinedload(RecipeModel.tags),
+            joinedload(RecipeModel.tools),
+            joinedload(RecipeModel.user).load_only(User.household_id),
+        ]
 
 
 class RecipePagination(PaginationBase):
@@ -183,24 +234,12 @@ class Recipe(RecipeSummary):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @model_validator(mode="after")
-    def calculate_missing_food_flags_and_format_display(self):
-        disable_amount = self.settings.disable_amount if self.settings else True
-        for ingredient in self.recipe_ingredient:
-            ingredient.disable_amount = disable_amount
-            ingredient.is_food = not ingredient.disable_amount
-
-            # recalculate the display property, since it depends on the disable_amount flag
-            ingredient.display = ingredient._format_display()
-
-        return self
-
     @field_validator("slug", mode="before")
     def validate_slug(slug: str, info: ValidationInfo):
         if not info.data.get("name"):
             return slug
 
-        return slugify(info.data["name"])
+        return create_recipe_slug(info.data["name"])
 
     @field_validator("recipe_ingredient", mode="before")
     def validate_ingredients(recipe_ingredient):
@@ -229,6 +268,12 @@ class Recipe(RecipeSummary):
         if isinstance(group_id, int):
             return uuid4()
         return group_id
+
+    @field_validator("household_id", mode="before")
+    def validate_household_id(household_id: Any):
+        if isinstance(household_id, int):
+            return uuid4()
+        return household_id
 
     @field_validator("user_id", mode="before")
     def validate_user_id(user_id: Any):

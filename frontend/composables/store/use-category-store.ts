@@ -1,73 +1,32 @@
-import { reactive, ref, Ref } from "@nuxtjs/composition-api";
-import { usePublicStoreActions, useStoreActions } from "../partials/use-actions-factory";
-import { usePublicExploreApi } from "../api/api-client";
-import { useUserApi } from "~/composables/api";
-import { RecipeCategory } from "~/lib/api/types/recipe";
+import type { Composer } from "vue-i18n";
+import { useData, useReadOnlyStore, useStore } from "../partials/use-store-factory";
+import type { RecipeCategory } from "~/lib/api/types/recipe";
+import { usePublicExploreApi, useUserApi } from "~/composables/api";
 
-const categoryStore: Ref<RecipeCategory[]> = ref([]);
-const publicStoreLoading = ref(false);
-const storeLoading = ref(false);
+const store: Ref<RecipeCategory[]> = ref([]);
+const loading = ref(false);
+const publicLoading = ref(false);
 
-export function useCategoryData() {
-  const data = reactive({
+export function resetCategoryStore() {
+  store.value = [];
+  loading.value = false;
+  publicLoading.value = false;
+}
+
+export const useCategoryData = function () {
+  return useData<RecipeCategory>({
     id: "",
     name: "",
-    slug: undefined,
+    slug: "",
   });
+};
 
-  function reset() {
-    data.id = "";
-    data.name = "";
-    data.slug = undefined;
-  }
+export const useCategoryStore = function (i18n?: Composer) {
+  const api = useUserApi(i18n);
+  return useStore<RecipeCategory>("category", store, loading, api.categories);
+};
 
-  return {
-    data,
-    reset,
-  };
-}
-
-export function usePublicCategoryStore(groupSlug: string) {
-  const api = usePublicExploreApi(groupSlug).explore;
-  const loading = publicStoreLoading;
-
-  const actions = {
-    ...usePublicStoreActions<RecipeCategory>(api.categories, categoryStore, loading),
-    flushStore() {
-      categoryStore.value = [];
-    },
-  };
-
-  if (!loading.value && (!categoryStore.value || categoryStore.value?.length === 0)) {
-    actions.getAll();
-  }
-
-  return {
-    items: categoryStore,
-    actions,
-    loading,
-  };
-}
-
-export function useCategoryStore() {
-  // passing the group slug switches to using the public API
-  const api = useUserApi();
-  const loading = storeLoading;
-
-  const actions = {
-    ...useStoreActions<RecipeCategory>(api.categories, categoryStore, loading),
-    flushStore() {
-      categoryStore.value = [];
-    },
-  };
-
-  if (!loading.value && (!categoryStore.value || categoryStore.value?.length === 0)) {
-    actions.getAll();
-  }
-
-  return {
-    items: categoryStore,
-    actions,
-    loading,
-  };
-}
+export const usePublicCategoryStore = function (groupSlug: string, i18n?: Composer) {
+  const api = usePublicExploreApi(groupSlug, i18n).explore;
+  return useReadOnlyStore<RecipeCategory>("category", store, publicLoading, api.categories);
+};

@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
+from pydantic import ConfigDict
 from sqlalchemy import Boolean, Float, ForeignKey, Integer, String, event, orm
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.orm.session import Session
@@ -9,11 +10,21 @@ from mealie.db.models._model_base import BaseMixins, SqlAlchemyBase
 from mealie.db.models.labels import MultiPurposeLabel
 from mealie.db.models.recipe.api_extras import IngredientFoodExtras, api_extras
 
-from .._model_utils import auto_init
+from .._model_utils.auto_init import auto_init
 from .._model_utils.guid import GUID
 
 if TYPE_CHECKING:
     from ..group import Group
+    from ..household import Household
+    from .recipe import RecipeModel
+
+households_to_ingredient_foods = sa.Table(
+    "households_to_ingredient_foods",
+    SqlAlchemyBase.metadata,
+    sa.Column("household_id", GUID, sa.ForeignKey("households.id"), index=True),
+    sa.Column("food_id", GUID, sa.ForeignKey("ingredient_foods.id"), index=True),
+    sa.UniqueConstraint("household_id", "food_id", name="household_id_food_id_key"),
+)
 
 
 class IngredientUnitModel(SqlAlchemyBase, BaseMixins):
@@ -36,7 +47,9 @@ class IngredientUnitModel(SqlAlchemyBase, BaseMixins):
         "RecipeIngredientModel", back_populates="unit"
     )
     aliases: Mapped[list["IngredientUnitAliasModel"]] = orm.relationship(
-        "IngredientUnitAliasModel", back_populates="unit", cascade="all, delete, delete-orphan"
+        "IngredientUnitAliasModel",
+        back_populates="unit",
+        cascade="all, delete, delete-orphan",
     )
 
     # Automatically updated by sqlalchemy event, do not write to this manually
@@ -140,6 +153,9 @@ class IngredientFoodModel(SqlAlchemyBase, BaseMixins):
     # ID Relationships
     group_id: Mapped[GUID] = mapped_column(GUID, ForeignKey("groups.id"), nullable=False, index=True)
     group: Mapped["Group"] = orm.relationship("Group", back_populates="ingredient_foods", foreign_keys=[group_id])
+    households_with_ingredient_food: Mapped[list["Household"]] = orm.relationship(
+        "Household", secondary=households_to_ingredient_foods, back_populates="ingredient_foods_on_hand"
+    )
 
     name: Mapped[str | None] = mapped_column(String)
     plural_name: Mapped[str | None] = mapped_column(String)
@@ -149,7 +165,9 @@ class IngredientFoodModel(SqlAlchemyBase, BaseMixins):
         "RecipeIngredientModel", back_populates="food"
     )
     aliases: Mapped[list["IngredientFoodAliasModel"]] = orm.relationship(
-        "IngredientFoodAliasModel", back_populates="food", cascade="all, delete, delete-orphan"
+        "IngredientFoodAliasModel",
+        back_populates="food",
+        cascade="all, delete, delete-orphan",
     )
     extras: Mapped[list[IngredientFoodExtras]] = orm.relationship("IngredientFoodExtras", cascade="all, delete-orphan")
 
@@ -160,13 +178,41 @@ class IngredientFoodModel(SqlAlchemyBase, BaseMixins):
     name_normalized: Mapped[str | None] = mapped_column(sa.String, index=True)
     plural_name_normalized: Mapped[str | None] = mapped_column(sa.String, index=True)
 
+    model_config = ConfigDict(
+        exclude={
+            "households_with_ingredient_food",
+        }
+    )
+
+    # Deprecated
+    on_hand: Mapped[bool] = mapped_column(Boolean, default=False)
+
     @api_extras
     @auto_init()
-    def __init__(self, session: Session, name: str | None = None, plural_name: str | None = None, **_) -> None:
+    def __init__(
+        self,
+        session: Session,
+        group_id: GUID,
+        name: str | None = None,
+        plural_name: str | None = None,
+        households_with_ingredient_food: list[str] | None = None,
+        **_,
+    ) -> None:
+        from ..household import Household
+
         if name is not None:
             self.name_normalized = self.normalize(name)
         if plural_name is not None:
             self.plural_name_normalized = self.normalize(plural_name)
+
+        if not households_with_ingredient_food:
+            self.households_with_ingredient_food = []
+        else:
+            self.households_with_ingredient_food = (
+                session.query(Household)
+                .filter(Household.group_id == group_id, Household.slug.in_(households_with_ingredient_food))
+                .all()
+            )
 
         tableargs = [
             sa.UniqueConstraint("name", "group_id", name="ingredient_foods_name_group_id_key"),
@@ -312,12 +358,24 @@ class RecipeIngredientModel(SqlAlchemyBase, BaseMixins):
 
     reference_id: Mapped[GUID | None] = mapped_column(GUID)  # Reference Links
 
+    # Recipe Reference
+    referenced_recipe_id: Mapped[GUID | None] = mapped_column(GUID, ForeignKey("recipes.id"), index=True)
+    referenced_recipe: Mapped["RecipeModel"] = orm.relationship(
+        "RecipeModel", back_populates="referenced_ingredients", foreign_keys=[referenced_recipe_id]
+    )
+
     # Automatically updated by sqlalchemy event, do not write to this manually
     note_normalized: Mapped[str | None] = mapped_column(String, index=True)
     original_text_normalized: Mapped[str | None] = mapped_column(String, index=True)
 
     @auto_init()
-    def __init__(self, session: Session, note: str | None = None, orginal_text: str | None = None, **_) -> None:
+    def __init__(
+        self,
+        session: Session,
+        note: str | None = None,
+        orginal_text: str | None = None,
+        **_,
+    ) -> None:
         # SQLAlchemy events do not seem to register things that are set during auto_init
         if note is not None:
             self.note_normalized = self.normalize(note)

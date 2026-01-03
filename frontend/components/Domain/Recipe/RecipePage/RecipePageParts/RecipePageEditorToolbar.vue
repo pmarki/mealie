@@ -1,59 +1,88 @@
 <template>
-  <div class="d-flex justify-start align-center">
-    <RecipeImageUploadBtn class="my-1" :slug="recipe.slug" @upload="uploadImage" @refresh="imageKey++" />
+  <div class="d-flex justify-start align-top flex-wrap">
+    <RecipeImageUploadBtn
+      class="my-2"
+      :slug="recipe.slug"
+      @upload="uploadImage"
+      @refresh="imageKey++"
+      @delete="deleteImage"
+    />
     <RecipeSettingsMenu
-      class="my-1 mx-1"
-      :value="recipe.settings"
+      v-model="recipe.settings"
+      class="my-2 mx-1"
       :is-owner="recipe.userId == user.id"
       @upload="uploadImage"
     />
+    <v-spacer />
+    <v-select
+      v-model="recipe.userId"
+      class="my-2"
+      max-width="300"
+      :items="allUsers"
+      :item-props="itemsProps"
+      :label="$t('general.owner')"
+      :disabled="!canEditOwner"
+      variant="outlined"
+      density="compact"
+    >
+      <template #prepend>
+        <UserAvatar
+          :user-id="recipe.userId"
+          :tooltip="false"
+        />
+      </template>
+    </v-select>
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, onUnmounted } from "@nuxtjs/composition-api";
-import { clearPageState, usePageState, usePageUser } from "~/composables/recipe-page/shared-state";
-import { NoUndefinedField } from "~/lib/api/types/non-generated";
-import { Recipe } from "~/lib/api/types/recipe";
+<script setup lang="ts">
+import { computed } from "vue";
+import { usePageState, usePageUser } from "~/composables/recipe-page/shared-state";
+import type { NoUndefinedField } from "~/lib/api/types/non-generated";
+import type { Recipe } from "~/lib/api/types/recipe";
 import { useUserApi } from "~/composables/api";
 import RecipeImageUploadBtn from "~/components/Domain/Recipe/RecipeImageUploadBtn.vue";
 import RecipeSettingsMenu from "~/components/Domain/Recipe/RecipeSettingsMenu.vue";
+import { useUserStore } from "~/composables/store/use-user-store";
+import UserAvatar from "~/components/Domain/User/UserAvatar.vue";
+import { useHouseholdStore } from "~/composables/store";
 
-export default defineComponent({
-  components: {
-    RecipeImageUploadBtn,
-    RecipeSettingsMenu,
-  },
-  props: {
-    recipe: {
-      type: Object as () => NoUndefinedField<Recipe>,
-      required: true,
-    },
-  },
-  setup(props) {
-    const { user } = usePageUser();
-    const api = useUserApi();
-    const { imageKey } = usePageState(props.recipe.slug);
-    onUnmounted(() => {
-      clearPageState(props.recipe.slug);
-      console.debug("reset RecipePage state during unmount");
-    });
-    async function uploadImage(fileObject: File) {
-      if (!props.recipe || !props.recipe.slug) {
-        return;
-      }
-      const newVersion = await api.recipes.updateImage(props.recipe.slug, fileObject);
-      if (newVersion?.data?.image) {
-        props.recipe.image = newVersion.data.image;
-      }
-      imageKey.value++;
-    }
+const recipe = defineModel<NoUndefinedField<Recipe>>({ required: true });
 
-    return {
-      user,
-      uploadImage,
-      imageKey,
-    };
-  },
+const { user } = usePageUser();
+const api = useUserApi();
+const { imageKey } = usePageState(recipe.value.slug);
+
+const canEditOwner = computed(() => {
+  return user.id === recipe.value.userId || user.admin;
 });
+
+const { store: allUsers } = useUserStore();
+const { store: households } = useHouseholdStore();
+
+function itemsProps(item: any) {
+  const owner = allUsers.value.find(u => u.id === item.id);
+  return {
+    value: item.id,
+    title: item.fullName,
+    subtitle: owner ? households.value.find(h => h.id === owner.householdId)?.name || "" : "",
+  };
+}
+
+async function uploadImage(fileObject: File) {
+  if (!recipe.value || !recipe.value.slug) {
+    return;
+  }
+  const newVersion = await api.recipes.updateImage(recipe.value.slug, fileObject);
+  if (newVersion?.data?.image) {
+    recipe.value.image = newVersion.data.image;
+  }
+  imageKey.value++;
+}
+
+async function deleteImage() {
+  // The image is already deleted on the backend, just need to update the UI
+  recipe.value.image = "";
+  imageKey.value++;
+}
 </script>

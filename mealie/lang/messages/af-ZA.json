@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Nuwe resepname moet uniek wees",
+        "recipe-created": "Recipe Created",
+        "recipe-image-deleted": "Recipe image deleted",
         "recipe-defaults": {
             "ingredient-note": "1 Cup Flour",
             "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Makes",
+            "serves": "Serves",
+            "serving": "Serving",
+            "servings": "Servings",
+            "yield": "Yield",
+            "yields": "Yields"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Jy het nie toestemming om hierdie aksie uit te voer nie",
+        "recursive-recipe-link": "A recipe cannot reference itself, either directly or indirectly",
         "no-entry-found": "Die gevraagde item is nie gevind nie",
         "integrity-error": "Databasis integriteit fout",
         "username-conflict-error": "Gebruikersnaam is reeds in gebruik",
@@ -34,7 +45,8 @@
         "generic-created-with-url": "{name} is geskep, {url}",
         "generic-updated-with-url": "{name} is opgedateer, {url}",
         "generic-duplicated": "{name} is gekopieer",
-        "generic-deleted": "{name} is verwyder"
+        "generic-deleted": "{name} is verwyder",
+        "logged-out": "Logged out"
     },
     "datetime": {
         "year": "year|years",
@@ -44,5 +56,28 @@
         "second": "second|seconds",
         "millisecond": "millisecond|milliseconds",
         "microsecond": "microsecond|microseconds"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie Forgot Password",
+            "header_text": "Forgot Password",
+            "message_top": "You have requested to reset your password.",
+            "message_bottom": "Please click the button above to reset your password.",
+            "button_text": "Reset Password"
+        },
+        "invitation": {
+            "subject": "Invitation to join Mealie",
+            "header_text": "You're Invited!",
+            "message_top": "You have been invited to join Mealie.",
+            "message_bottom": "Please click the button above to accept the invitation.",
+            "button_text": "Accept Invitation"
+        },
+        "test": {
+            "subject": "Mealie Test Email",
+            "header_text": "Test Email",
+            "message_top": "This is a test email.",
+            "message_bottom": "Please click the button above to test the email.",
+            "button_text": "Open Mealie"
+        }
     }
 }

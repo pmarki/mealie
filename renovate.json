@@ -1,9 +1,31 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "enabledManagers": [
-    "poetry"
+    "pep621",
+    "dockerfile",
+    "npm"
   ],
   "extends": [
-    "config:base"
+    "config:recommended"
+  ],
+  "addLabels": [
+    "dependencies"
+  ],
+  "ignoreDeps": [
+    "python"
+  ],
+  "packageRules": [
+    {
+      "matchManagers": [
+        "npm"
+      ],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "matchManagers": [
+        "pep621"
+      ],
+      "rangeStrategy": "pin"
+    }
   ]
 }

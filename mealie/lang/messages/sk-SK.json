@@ -4,28 +4,39 @@
     },
     "recipe": {
         "unique-name-error": "Názov receptu musí byť unikátny",
+        "recipe-created": "Vytvorený recept",
+        "recipe-image-deleted": "Recipe image deleted",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "1 šálka múky",
+            "step-text": "Kroky receptu, ako aj ďalšie polia na stránke receptu podporujú markdown syntax.\n\n**Pridanie odkazu**\n\n[Môj odkaz](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Porcie",
+            "serves": "Porcie",
+            "serving": "Porcia",
+            "servings": "Porcie",
+            "yield": "Množstvo",
+            "yields": "Počet porcií"
         }
     },
     "mealplan": {
         "no-recipes-match-your-rules": "Vaše pravidlá nespĺňa žiadny recept"
     },
     "user": {
-        "user-updated": "Užívateľ bol aktualizovaný",
+        "user-updated": "Používateľ bol aktualizovaný",
         "password-updated": "Heslo bolo aktualizované",
         "invalid-current-password": "Aktuálne heslo neplatné",
-        "ldap-update-password-unavailable": "Aktualizácia hesla nie je možná, užívateľ je spravovaný LDAP"
+        "ldap-update-password-unavailable": "Aktualizácia hesla nie je možná, používateľ je spravovaný v LDAPe"
     },
     "group": {
         "report-deleted": "Report bol odstránený."
     },
     "exceptions": {
         "permission_denied": "Nemáte povolenie na vykonanie tejto akcie",
+        "recursive-recipe-link": "A recipe cannot reference itself, either directly or indirectly",
         "no-entry-found": "404 - Požadovaná stránka nebola nájdená",
         "integrity-error": "Chyba integrity databázy",
-        "username-conflict-error": "Toto užívateľské meno je už obsadené",
+        "username-conflict-error": "Toto meno používateľa je už obsadené",
         "email-conflict-error": "Tento e-mail sa už používa"
     },
     "notifications": {
@@ -34,7 +45,8 @@
         "generic-created-with-url": "{name} bol vytvorený, {url}",
         "generic-updated-with-url": "{name} bol aktualizovaný, {url}",
         "generic-duplicated": "{name} bol duplikovaný",
-        "generic-deleted": "{name} bol vymazaný"
+        "generic-deleted": "{name} bol vymazaný",
+        "logged-out": "Logged out"
     },
     "datetime": {
         "year": "rok|roky",
@@ -44,5 +56,28 @@
         "second": "sekunda|sekúnd",
         "millisecond": "milisekunda|milisekúnd",
         "microsecond": "mikrosekunda|mikrosekúnd"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie zabudnuté heslo",
+            "header_text": "Zabudnuté heslo",
+            "message_top": "Požiadali ste o obnovenie hesla.",
+            "message_bottom": "Prosím stlačte tlačidlo vyššie, na obnovenie vášho hesla.",
+            "button_text": "Obnovenie hesla"
+        },
+        "invitation": {
+            "subject": "Pozvanie na pripojenie k Mealie",
+            "header_text": "Boli ste pozvaní!",
+            "message_top": "Boli ste pozvaní na pripojenie k Mealie.",
+            "message_bottom": "Prosím, kliknite na tlačidlo vyššie pre akceptáciu pozvánky.",
+            "button_text": "Prijat pozvanie"
+        },
+        "test": {
+            "subject": "Testovací email Mealie",
+            "header_text": "Testovací email",
+            "message_top": "Toto je testovací email.",
+            "message_bottom": "Prosím, kliknite na tlačidlo vyššie, aby ste otestovali email.",
+            "button_text": "Otvoriť Mealie"
+        }
     }
 }

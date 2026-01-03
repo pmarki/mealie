@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Názvy receptů musí být jedinečné",
+        "recipe-created": "Recept byl vytvořen",
+        "recipe-image-deleted": "Recept smazán",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "1 hrnek mouky",
+            "step-text": "Kroky receptu stejně jako další pole v receptu podporují syntaxi markdown.\n\n**Přidat odkaz**\n\n[Můj odkaz](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Vytvoří",
+            "serves": "Porce",
+            "serving": "Porce",
+            "servings": "Porcí",
+            "yield": "Výnos",
+            "yields": "Výnosy"
         }
     },
     "mealplan": {
@@ -15,17 +25,18 @@
     "user": {
         "user-updated": "Uživatel aktualizován",
         "password-updated": "Heslo aktualizováno",
-        "invalid-current-password": "Nesprávné aktuální heslo",
-        "ldap-update-password-unavailable": "Nelze aktualizovat heslo, uživatel je řízen pomocí LDAP"
+        "invalid-current-password": "Nesprávné současné heslo",
+        "ldap-update-password-unavailable": "Nelze aktualizovat heslo, uživatel je spravován protokolem LDAP"
     },
     "group": {
-        "report-deleted": "Report odstraněn."
+        "report-deleted": "Sestava odstraněna."
     },
     "exceptions": {
-        "permission_denied": "K provedení této akce nemáte oprávnění",
-        "no-entry-found": "Požadovaný zdroj nebyl nalezen",
+        "permission_denied": "Nemáte oprávnění k provedení této akce",
+        "recursive-recipe-link": "Recept se nemůže sám sebe přímo ani nepřímo odkazovat",
+        "no-entry-found": "Požadovaný prostředek nebyl nalezen",
         "integrity-error": "Chyba integrity databáze",
-        "username-conflict-error": "Toto uživatelské jméno je již obsazeno",
+        "username-conflict-error": "Toto uživatelské jméno je již používáno",
         "email-conflict-error": "Tento e-mail je již používán"
     },
     "notifications": {
@@ -34,15 +45,39 @@
         "generic-created-with-url": "{name} byl vytvořen, {url}",
         "generic-updated-with-url": "{name} byl aktualizován, {url}",
         "generic-duplicated": "{name} byl duplikován",
-        "generic-deleted": "{name} byl odstraněn"
+        "generic-deleted": "{name} byl odstraněn",
+        "logged-out": "Odhlášení"
     },
     "datetime": {
-        "year": "year|years",
-        "day": "day|days",
-        "hour": "hour|hours",
-        "minute": "minute|minutes",
-        "second": "second|seconds",
-        "millisecond": "millisecond|milliseconds",
-        "microsecond": "microsecond|microseconds"
+        "year": "rok|roky",
+        "day": "den|dny|dnů",
+        "hour": "hodina|hodiny|hodin",
+        "minute": "minuta|minuty|minut",
+        "second": "sekunda|sekundy|sekund",
+        "millisecond": "millisekunda|millisekundy|millisekund",
+        "microsecond": "mikrosekunda|mikrosekundy|mikrosekund"
+    },
+    "emails": {
+        "password": {
+            "subject": "Zapomenuté heslo Mealie",
+            "header_text": "Zapomenuté heslo",
+            "message_top": "Požádali jste o obnovení hesla.",
+            "message_bottom": "Hesla obnovíte kliknutím na tlačítko výše.",
+            "button_text": "Obnovit heslo"
+        },
+        "invitation": {
+            "subject": "Pozvánka k připojení k Mealie",
+            "header_text": "Jste pozváni!",
+            "message_top": "Byli jste pozváni, abyste se připojili k Mealie.",
+            "message_bottom": "Pro přijetí pozvánky klikněte na tlačítko výše.",
+            "button_text": "Přijmout pozvánku"
+        },
+        "test": {
+            "subject": "Zkušební e-mail z Mealie",
+            "header_text": "Zkušební e-mail",
+            "message_top": "Toto je zkušební email.",
+            "message_bottom": "E-mail otestujete kliknutím na tlačítko výše.",
+            "button_text": "Otevřít Mealie"
+        }
     }
 }

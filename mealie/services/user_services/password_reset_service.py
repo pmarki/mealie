@@ -11,7 +11,7 @@ from mealie.services.email import EmailService
 
 class PasswordResetService(BaseService):
     def __init__(self, session: Session) -> None:
-        self.db = get_repositories(session)
+        self.db = get_repositories(session, group_id=None, household_id=None)
         super().__init__()
 
     def generate_reset_token(self, email: str) -> SavePasswordResetToken | None:
@@ -21,7 +21,7 @@ class PasswordResetService(BaseService):
             self.logger.error(f"failed to create password reset for {email=}: user doesn't exists")
             # Do not raise exception here as we don't want to confirm to the client that the Email doesn't exists
             return None
-        elif user.password == "LDAP" or user.auth_method == AuthMethod.LDAP:
+        elif user.auth_method == AuthMethod.LDAP:
             self.logger.error(f"failed to create password reset for {email=}: user controlled by LDAP")
             return None
 
@@ -32,14 +32,14 @@ class PasswordResetService(BaseService):
 
         return self.db.tokens_pw_reset.create(save_token)
 
-    def send_reset_email(self, email: str):
+    def send_reset_email(self, email: str, accept_language: str | None = None):
         token_entry = self.generate_reset_token(email)
 
         if token_entry is None:
             return None
 
         # Send Email
-        email_servive = EmailService()
+        email_servive = EmailService(locale=accept_language)
         reset_url = f"{self.settings.BASE_URL}/reset-password/?token={token_entry.token}"
 
         try:

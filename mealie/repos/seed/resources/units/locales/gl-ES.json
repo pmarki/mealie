@@ -1,101 +1,140 @@
 {
     "teaspoon": {
-        "name": "teaspoon",
+        "name": "culler de té",
+        "plural_name": "culleres de té",
         "description": "",
-        "abbreviation": "tsp"
+        "abbreviation": "culleriña"
     },
     "tablespoon": {
-        "name": "tablespoon",
+        "name": "culler de sopa",
+        "plural_name": "culleres de sopa",
         "description": "",
-        "abbreviation": "tbsp"
+        "abbreviation": "culleradas sopeiras"
     },
     "cup": {
-        "name": "cup",
+        "name": "cunca",
+        "plural_name": "cuncas",
         "description": "",
-        "abbreviation": "cup"
+        "abbreviation": "c"
     },
     "fluid-ounce": {
-        "name": "fluid ounce",
+        "name": "onza fluida",
+        "plural_name": "onzas fluidas",
         "description": "",
         "abbreviation": "fl oz"
     },
     "pint": {
-        "name": "pint",
+        "name": "pinta",
+        "plural_name": "pintas",
         "description": "",
         "abbreviation": "pt"
     },
     "quart": {
-        "name": "quart",
+        "name": "cuarto",
+        "plural_name": "cuartos",
         "description": "",
         "abbreviation": "qt"
     },
     "gallon": {
-        "name": "gallon",
+        "name": "galón",
+        "plural_name": "galóns",
         "description": "",
         "abbreviation": "gal"
     },
     "milliliter": {
-        "name": "milliliter",
+        "name": "mililitro",
+        "plural_name": "mililitros",
         "description": "",
         "abbreviation": "ml"
     },
     "liter": {
-        "name": "liter",
+        "name": "litro",
+        "plural_name": "litros",
         "description": "",
         "abbreviation": "l"
     },
     "pound": {
-        "name": "pound",
+        "name": "libra",
+        "plural_name": "libras",
         "description": "",
-        "abbreviation": "lb"
+        "abbreviation": "lb",
+        "plural_abbreviation": "lbs"
     },
     "ounce": {
-        "name": "ounce",
+        "name": "onza",
+        "plural_name": "onzas",
         "description": "",
         "abbreviation": "oz"
     },
     "gram": {
-        "name": "gram",
+        "name": "gramo",
+        "plural_name": "gramos",
         "description": "",
         "abbreviation": "g"
     },
     "kilogram": {
-        "name": "kilogram",
+        "name": "quilogramo",
+        "plural_name": "quilogramos",
         "description": "",
         "abbreviation": "kg"
     },
     "milligram": {
-        "name": "milligram",
+        "name": "miligramo",
+        "plural_name": "miligramos",
         "description": "",
         "abbreviation": "mg"
     },
     "splash": {
-        "name": "splash",
+        "name": "fio",
+        "plural_name": "fios",
         "description": "",
         "abbreviation": ""
     },
     "dash": {
-        "name": "dash",
+        "name": "areiña",
+        "plural_name": "areiñas",
         "description": "",
         "abbreviation": ""
     },
     "serving": {
-        "name": "serving",
+        "name": "porción",
+        "plural_name": "porcions",
         "description": "",
         "abbreviation": ""
     },
     "head": {
-        "name": "head",
+        "name": "cabeza",
+        "plural_name": "cabezas",
         "description": "",
         "abbreviation": ""
     },
     "clove": {
-        "name": "clove",
+        "name": "dente",
+        "plural_name": "dentes",
         "description": "",
         "abbreviation": ""
     },
     "can": {
-        "name": "can",
+        "name": "lata",
+        "plural_name": "latas",
+        "description": "",
+        "abbreviation": ""
+    },
+    "bunch": {
+        "name": "manchea",
+        "plural_name": "mancheas",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pack": {
+        "name": "embalaxe",
+        "plural_name": "embalaxes",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pinch": {
+        "name": "areiña",
+        "plural_name": "areiñas",
         "description": "",
         "abbreviation": ""
     }

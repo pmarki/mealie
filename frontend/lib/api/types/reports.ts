@@ -1,5 +1,5 @@
 /* tslint:disable */
-/* eslint-disable */
+
 /**
 /* This file was automatically generated from pydantic models by running pydantic2ts.
 /* Do not modify it by hand - just update the pydantic models and then re-run the script
@@ -13,7 +13,7 @@ export interface ReportCreate {
   category: ReportCategory;
   groupId: string;
   name: string;
-  status?: ReportSummaryStatus & string;
+  status?: ReportSummaryStatus;
 }
 export interface ReportEntryCreate {
   reportId: string;
@@ -35,7 +35,7 @@ export interface ReportOut {
   category: ReportCategory;
   groupId: string;
   name: string;
-  status?: ReportSummaryStatus & string;
+  status?: ReportSummaryStatus;
   id: string;
   entries?: ReportEntryOut[];
 }
@@ -44,6 +44,6 @@ export interface ReportSummary {
   category: ReportCategory;
   groupId: string;
   name: string;
-  status?: ReportSummaryStatus & string;
+  status?: ReportSummaryStatus;
   id: string;
 }

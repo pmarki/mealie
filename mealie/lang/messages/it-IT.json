@@ -3,10 +3,20 @@
         "server-error": "Si è verificato un errore inaspettato"
     },
     "recipe": {
-        "unique-name-error": "I nomi delle ricette devono essere unici",
+        "unique-name-error": "I nomi delle ricette devono essere univoci",
+        "recipe-created": "Ricetta Creata",
+        "recipe-image-deleted": "Immagine della ricetta eliminata",
         "recipe-defaults": {
             "ingredient-note": "1 Tazza Di Farina",
-            "step-text": "I passaggi della ricetta e altri campi nella pagina delle ricette supportano la sintassi markdown.\n\n**Aggiungi un link**\n\n[Il mio Link](https://demo.mealie.io)"
+            "step-text": "I passaggi della ricetta e altri campi nella pagina delle ricette supportano la sintassi markdown.\n\n**Aggiungi un link**\n\n[Il mio Link](https://demo.mealie.io)\nrecipe.recipe-defaults.step-text"
+        },
+        "servings-text": {
+            "makes": "Rende",
+            "serves": "Serve",
+            "serving": "Portata",
+            "servings": "Portate",
+            "yield": "Porzione",
+            "yields": "Porzioni"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Non hai i permessi per eseguire quest'azione",
+        "recursive-recipe-link": "Una ricetta non può fare riferimento a sé stessa, né direttamente né indirettamente",
         "no-entry-found": "La risorsa richiesta non è stata trovata",
         "integrity-error": "Errore di integrità del database",
         "username-conflict-error": "Questo nome utente è già in uso",
@@ -34,7 +45,8 @@
         "generic-created-with-url": "{name} è stato creato, {url}",
         "generic-updated-with-url": "{name} è stato aggiornato, {url}",
         "generic-duplicated": "{name} è stato duplicato",
-        "generic-deleted": "{name} è stato eliminato"
+        "generic-deleted": "{name} è stato eliminato",
+        "logged-out": "Disconnesso"
     },
     "datetime": {
         "year": "anno|anni",
@@ -44,5 +56,28 @@
         "second": "secondo|secondi",
         "millisecond": "millisecondo|millisecondi",
         "microsecond": "microsecondo|microsecondi"
+    },
+    "emails": {
+        "password": {
+            "subject": "Password di Mealie Dimenticata",
+            "header_text": "Password Dimenticata",
+            "message_top": "Hai richiesto di reimpostare la password.",
+            "message_bottom": "Clicca sul pulsante qui sotto per reimpostare la password.",
+            "button_text": "Reimposta Password"
+        },
+        "invitation": {
+            "subject": "Invito a unirsi a Mealie",
+            "header_text": "Sei Invitato!",
+            "message_top": "Sei stato invitato a unirti a Mealie.",
+            "message_bottom": "Fare clic sul pulsante qui sopra per accettare l'invito.",
+            "button_text": "Accetta l'invito"
+        },
+        "test": {
+            "subject": "Email di prova di Mealie",
+            "header_text": "Email di prova",
+            "message_top": "Questa è una email di prova.",
+            "message_bottom": "Fare clic sul pulsante qui sopra per inviare l'email di prova.",
+            "button_text": "Apri Malie"
+        }
     }
 }

@@ -1,11 +1,14 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import ForeignKey, String
+from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from mealie.db.models._model_utils.datetime import NaiveDateTime
+
 from .._model_base import BaseMixins, SqlAlchemyBase
-from .._model_utils import auto_init
+from .._model_utils.auto_init import auto_init
 from .._model_utils.guid import GUID
 
 if TYPE_CHECKING:
@@ -21,6 +24,9 @@ class RecipeTimelineEvent(SqlAlchemyBase, BaseMixins):
     recipe_id: Mapped[GUID] = mapped_column(GUID, ForeignKey("recipes.id"), nullable=False, index=True)
     recipe: Mapped["RecipeModel"] = relationship("RecipeModel", back_populates="timeline_events")
 
+    group_id: AssociationProxy[GUID] = association_proxy("recipe", "group_id")
+    household_id: AssociationProxy[GUID] = association_proxy("recipe", "household_id")
+
     # Related User (Actor)
     user_id: Mapped[GUID] = mapped_column(GUID, ForeignKey("users.id"), nullable=False, index=True)
     user: Mapped["User"] = relationship(
@@ -34,7 +40,7 @@ class RecipeTimelineEvent(SqlAlchemyBase, BaseMixins):
     image: Mapped[str | None] = mapped_column(String)
 
     # Timestamps
-    timestamp: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    timestamp: Mapped[datetime | None] = mapped_column(NaiveDateTime, index=True)
 
     @auto_init()
     def __init__(
@@ -42,4 +48,4 @@ class RecipeTimelineEvent(SqlAlchemyBase, BaseMixins):
         timestamp=None,
         **_,
     ) -> None:
-        self.timestamp = timestamp or datetime.now()
+        self.timestamp = timestamp or datetime.now(UTC)

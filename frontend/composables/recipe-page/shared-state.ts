@@ -1,5 +1,4 @@
-import { computed, ComputedRef, ref, Ref, useContext } from "@nuxtjs/composition-api";
-import { UserOut } from "~/lib/api/types/user";
+import type { UserOut } from "~/lib/api/types/user";
 import { useNavigationWarning } from "~/composables/use-navigation-warning";
 
 export enum PageMode {
@@ -45,11 +44,16 @@ interface PageState {
    * true is the page is in cook mode.
    */
   isCookMode: ComputedRef<boolean>;
+  /**
+   * true if the recipe is currently being parsed.
+   */
+  isParsing: ComputedRef<boolean>;
 
   setMode: (v: PageMode) => void;
   setEditMode: (v: EditorMode) => void;
   toggleEditMode: () => void;
   toggleCookMode: () => void;
+  toggleIsParsing: (v?: boolean) => void;
 }
 
 type PageRefs = ReturnType<typeof pageRefs>;
@@ -61,11 +65,12 @@ function pageRefs(slug: string) {
     slugRef: ref(slug),
     pageModeRef: ref(PageMode.VIEW),
     editModeRef: ref(EditorMode.FORM),
+    isParsingRef: ref(false),
     imageKey: ref(1),
   };
 }
 
-function pageState({ slugRef, pageModeRef, editModeRef, imageKey }: PageRefs): PageState {
+function pageState({ slugRef, pageModeRef, editModeRef, isParsingRef, imageKey }: PageRefs): PageState {
   const { activateNavigationWarning, deactivateNavigationWarning } = useNavigationWarning();
 
   const toggleEditMode = () => {
@@ -84,6 +89,14 @@ function pageState({ slugRef, pageModeRef, editModeRef, imageKey }: PageRefs): P
     pageModeRef.value = PageMode.COOK;
   };
 
+  const toggleIsParsing = (v: boolean | null = null) => {
+    if (v === null) {
+      v = !isParsingRef.value;
+    }
+
+    isParsingRef.value = v;
+  };
+
   const setEditMode = (v: EditorMode) => {
     editModeRef.value = v;
   };
@@ -96,7 +109,8 @@ function pageState({ slugRef, pageModeRef, editModeRef, imageKey }: PageRefs): P
         setEditMode(EditorMode.FORM);
       }
       deactivateNavigationWarning();
-    } else if (toMode === PageMode.EDIT) {
+    }
+    else if (toMode === PageMode.EDIT) {
       activateNavigationWarning();
     }
 
@@ -113,6 +127,7 @@ function pageState({ slugRef, pageModeRef, editModeRef, imageKey }: PageRefs): P
     setMode,
     setEditMode,
     toggleCookMode,
+    toggleIsParsing,
 
     isEditForm: computed(() => {
       return pageModeRef.value === PageMode.EDIT && editModeRef.value === EditorMode.FORM;
@@ -125,6 +140,9 @@ function pageState({ slugRef, pageModeRef, editModeRef, imageKey }: PageRefs): P
     }),
     isCookMode: computed(() => {
       return pageModeRef.value === PageMode.COOK;
+    }),
+    isParsing: computed(() => {
+      return isParsingRef.value;
     }),
   };
 }
@@ -142,6 +160,7 @@ export function usePageState(slug: string): PageState {
 }
 
 export function clearPageState(slug: string) {
+  // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
   delete memo[slug];
 }
 
@@ -151,20 +170,23 @@ export function clearPageState(slug: string) {
  * object with all properties set to their zero value is returned.
  */
 export function usePageUser(): { user: UserOut } {
-  const { $auth } = useContext();
+  const $auth = useMealieAuth();
 
-  if (!$auth.user) {
+  if (!$auth.user.value) {
     return {
       user: {
         id: "",
         group: "",
         groupId: "",
         groupSlug: "",
+        household: "",
+        householdId: "",
+        householdSlug: "",
         cacheKey: "",
         email: "",
       },
     };
   }
 
-  return { user: $auth.user };
+  return { user: $auth.user.value };
 }

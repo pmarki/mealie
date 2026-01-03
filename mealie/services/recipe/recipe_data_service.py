@@ -1,5 +1,6 @@
 import asyncio
 import shutil
+from logging import Logger
 from pathlib import Path
 
 from httpx import AsyncClient, Response
@@ -8,14 +9,9 @@ from pydantic import UUID4
 from mealie.pkgs import img, safehttp
 from mealie.pkgs.safehttp.transport import AsyncSafeTransport
 from mealie.schema.recipe.recipe import Recipe
+from mealie.schema.recipe.recipe_image_types import RecipeImageTypes
 from mealie.services._base_service import BaseService
-
-try:
-    from recipe_scrapers._abstract import HEADERS
-
-    _FIREFOX_UA = HEADERS["User-Agent"]
-except (ImportError, KeyError):
-    _FIREFOX_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
+from mealie.services.scraper.user_agents_manager import get_user_agents_manager
 
 
 async def gather_with_concurrency(n, *coros, ignore_exceptions=False):
@@ -32,13 +28,15 @@ async def gather_with_concurrency(n, *coros, ignore_exceptions=False):
 
 
 async def largest_content_len(urls: list[str]) -> tuple[str, int]:
+    user_agent_manager = get_user_agents_manager()
+
     largest_url = ""
     largest_len = 0
 
     max_concurrency = 10
 
     async def do(client: AsyncClient, url: str) -> Response:
-        return await client.head(url, headers={"User-Agent": _FIREFOX_UA})
+        return await client.head(url, headers=user_agent_manager.get_scrape_headers())
 
     async with AsyncClient(transport=safehttp.AsyncSafeTransport()) as client:
         tasks = [do(client, url) for url in urls]
@@ -63,7 +61,7 @@ class InvalidDomainError(Exception):
 class RecipeDataService(BaseService):
     minifier: img.ABCMinifier
 
-    def __init__(self, recipe_id: UUID4, group_id: UUID4 | None = None) -> None:
+    def __init__(self, recipe_id: UUID4, logger: Logger | None = None) -> None:
         """
         RecipeDataService is a service that consolidates the reading/writing actions related
         to assets, and images for a recipe.
@@ -71,7 +69,7 @@ class RecipeDataService(BaseService):
         super().__init__()
 
         self.recipe_id = recipe_id
-        self.slug = group_id
+        self.logger = logger or self.logger
         self.minifier = img.PillowMinifier(purge=True, logger=self.logger)
 
         self.dir_data = Recipe.directory_from_id(self.recipe_id)
@@ -109,8 +107,17 @@ class RecipeDataService(BaseService):
 
         return image_path
 
+    def delete_image(self, image_dir: Path | None = None):
+        if not image_dir:
+            image_dir = self.dir_image
+
+        for img_type in RecipeImageTypes:
+            image_path = image_dir.joinpath(img_type.value)
+            image_path.unlink(missing_ok=True)
+
     async def scrape_image(self, image_url: str | dict[str, str] | list[str]) -> None:
         self.logger.info(f"Image URL: {image_url}")
+        user_agent = get_user_agents_manager().user_agents[0]
 
         image_url_str = ""
 
@@ -136,12 +143,12 @@ class RecipeDataService(BaseService):
         if ext not in img.IMAGE_EXTENSIONS:
             ext = "jpg"  # Guess the extension
 
-        file_name = f"{str(self.recipe_id)}.{ext}"
+        file_name = f"{self.recipe_id!s}.{ext}"
         file_path = Recipe.directory_from_id(self.recipe_id).joinpath("images", file_name)
 
         async with AsyncClient(transport=AsyncSafeTransport()) as client:
             try:
-                r = await client.get(image_url_str, headers={"User-Agent": _FIREFOX_UA})
+                r = await client.get(image_url_str, headers={"User-Agent": user_agent})
             except Exception:
                 self.logger.exception("Fatal Image Request Exception")
                 return None

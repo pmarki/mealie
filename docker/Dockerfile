@@ -1,8 +1,12 @@
-FROM node:16 as builder
+###############################################
+# Frontend Build
+###############################################
+FROM node:24@sha256:b52a8d1206132b36d60e51e413d9a81336e8a0206d3b648cabd6d5a49c4c0f54 \
+    AS frontend-builder
 
-WORKDIR /app
+WORKDIR /frontend
 
-COPY ./frontend .
+COPY frontend .
 
 RUN yarn install \
     --prefer-offline \
@@ -17,7 +21,8 @@ RUN yarn generate
 ###############################################
 # Base Image - Python
 ###############################################
-FROM python:3.10-slim as python-base
+FROM python:3.12-slim@sha256:2267adc248a477c1f1a852a07a5a224d42abe54c28aafa572efa157dfb001bba \
+    AS python-base
 
 ENV MEALIE_HOME="/app"
 
@@ -26,14 +31,10 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100 \
-    POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_NO_INTERACTION=1 \
-    PYSETUP_PATH="/opt/pysetup" \
-    VENV_PATH="/opt/pysetup/.venv"
+    VENV_PATH="/opt/mealie"
 
-# prepend poetry and venv to path
-ENV PATH="$POETRY_HOME/bin:$VENV_PATH/bin:$PATH"
+# prepend venv to path
+ENV PATH="$VENV_PATH/bin:$PATH"
 
 # create user account
 RUN useradd -u 911 -U -d $MEALIE_HOME -s /bin/bash abc \
@@ -41,43 +42,76 @@ RUN useradd -u 911 -U -d $MEALIE_HOME -s /bin/bash abc \
     && mkdir $MEALIE_HOME
 
 ###############################################
-# Builder Image
+# Backend Package Build
 ###############################################
-FROM python-base as builder-base
+FROM python-base AS backend-builder
 RUN apt-get update \
     && apt-get install --no-install-recommends -y \
     curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install uv
+
+WORKDIR /mealie
+
+# copy project files here to ensure they will be cached.
+COPY uv.lock pyproject.toml ./
+COPY mealie ./mealie
+
+# Copy frontend to package it into the wheel
+COPY --from=frontend-builder /frontend/dist ./mealie/frontend
+
+# Build the source and binary package
+RUN uv build --out-dir dist
+
+# Create the requirements file, which is used to install the built package and
+# its pinned dependencies later. mealie is included to ensure the built one is
+# what's installed.
+RUN uv export --no-editable --no-emit-project --extra pgsql --format requirements-txt --output-file dist/requirements.txt \
+    && MEALIE_VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])") \
+    && echo "mealie[pgsql]==${MEALIE_VERSION} \\" >> dist/requirements.txt \
+    && pip hash dist/mealie-${MEALIE_VERSION}-py3-none-any.whl | tail -n1 | tr -d '\n' >> dist/requirements.txt \
+    && echo " \\" >> dist/requirements.txt \
+    && pip hash dist/mealie-${MEALIE_VERSION}.tar.gz | tail -n1 >> dist/requirements.txt
+
+###############################################
+# Package Container
+# Only role is to hold the packages, or be overriden by a --build-context flag.
+###############################################
+FROM scratch AS packages
+COPY --from=backend-builder /mealie/dist /
+
+###############################################
+# Python Virtual Environment Build
+###############################################
+# Install packages required to build the venv, in parallel to building the wheel
+FROM python-base AS venv-builder-base
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
     build-essential \
     libpq-dev \
     libwebp-dev \
     # LDAP Dependencies
     libsasl2-dev libldap2-dev libssl-dev \
     gnupg gnupg2 gnupg1 \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install -U --no-cache-dir pip
+    && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv --upgrade-deps $VENV_PATH
 
-# install poetry - respects $POETRY_VERSION & $POETRY_HOME
-ENV POETRY_VERSION=1.3.1
-RUN curl -sSL https://install.python-poetry.org | python3 -
+# Install the wheel and all dependencies into the venv
+FROM venv-builder-base AS venv-builder
 
-# copy project requirement files here to ensure they will be cached.
-WORKDIR $PYSETUP_PATH
-COPY ./poetry.lock ./pyproject.toml ./
+# Copy built package (wheel) and its dependency requirements
+COPY --from=packages * /dist/
 
-# install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
-RUN poetry install -E pgsql --only main
-
-###############################################
-# CRFPP Image
-###############################################
-FROM hkotel/crfpp as crfpp
-
-RUN echo "crfpp-container"
+# Install the wheel with exact versions of dependencies into the venv
+RUN . $VENV_PATH/bin/activate \
+    && pip install --require-hashes -r /dist/requirements.txt --find-links /dist
 
 ###############################################
 # Production Image
 ###############################################
-FROM python-base as production
+FROM python-base AS production
+LABEL org.opencontainers.image.source="https://github.com/mealie-recipes/mealie"
 ENV PRODUCTION=true
 ENV TESTING=false
 
@@ -89,48 +123,26 @@ RUN apt-get update \
     gosu \
     iproute2 \
     libldap-common \
-    libldap-2.5 \
+    libldap2 \
     && rm -rf /var/lib/apt/lists/*
 
-# copying poetry and venv into image
-COPY --from=builder-base $POETRY_HOME $POETRY_HOME
-COPY --from=builder-base $PYSETUP_PATH $PYSETUP_PATH
+# create directory used for Docker Secrets
+RUN mkdir -p /run/secrets
 
-ENV LD_LIBRARY_PATH=/usr/local/lib
-COPY --from=crfpp /usr/local/lib/ /usr/local/lib
-COPY --from=crfpp /usr/local/bin/crf_learn /usr/local/bin/crf_learn
-COPY --from=crfpp /usr/local/bin/crf_test /usr/local/bin/crf_test
+# Copy venv into image. It contains a fully-installed mealie backend and frontend.
+COPY --from=venv-builder $VENV_PATH $VENV_PATH
 
-# copy backend
-COPY ./mealie $MEALIE_HOME/mealie
-COPY ./poetry.lock ./pyproject.toml $MEALIE_HOME/
-COPY ./gunicorn_conf.py $MEALIE_HOME
-
-# Alembic
-COPY ./alembic $MEALIE_HOME/alembic
-COPY ./alembic.ini $MEALIE_HOME/
-
-# venv already has runtime deps installed we get a quicker install
-WORKDIR $MEALIE_HOME
-RUN . $VENV_PATH/bin/activate && poetry install -E pgsql --only main
-WORKDIR /
-
-# Grab CRF++ Model Release
-RUN python $MEALIE_HOME/mealie/scripts/install_model.py
+# install nltk data for the ingredient parser
+ENV NLTK_DATA="/nltk_data/"
+RUN mkdir -p $NLTK_DATA
+RUN python -m nltk.downloader -d $NLTK_DATA averaged_perceptron_tagger_eng
 
 VOLUME [ "$MEALIE_HOME/data/" ]
 ENV APP_PORT=9000
 
 EXPOSE ${APP_PORT}
 
-HEALTHCHECK CMD python $MEALIE_HOME/mealie/scripts/healthcheck.py || exit 1
-
-# ----------------------------------
-# Copy Frontend
-
-# copying caddy into image
-ENV STATIC_FILES=/spa/static
-COPY --from=builder /app/dist  ${STATIC_FILES}
+HEALTHCHECK CMD python -m mealie.scripts.healthcheck || exit 1
 
 ENV HOST 0.0.0.0
 

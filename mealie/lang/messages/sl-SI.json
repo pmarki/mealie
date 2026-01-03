@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Ime recepta mora biti unikatno",
+        "recipe-created": "Recept ustvarjen",
+        "recipe-image-deleted": "Slika recepta je bila izbrisana",
         "recipe-defaults": {
             "ingredient-note": "skodelica moke",
             "step-text": "Postopek priprave recepta, kot tudi druga polja v receptu podpirajo markdown sintakso.\n\n**Dodaj povezavo**\n\n[Moja povezava](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Naredi",
+            "serves": "Postrezi",
+            "serving": "Postrežba",
+            "servings": "Obroki",
+            "yield": "donos",
+            "yields": "donosi"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Nimate dovoljenja za izvedbo zahtevanega dejanja",
+        "recursive-recipe-link": "Recept se ne more sklicevati na samega sebe, niti neposredno niti posredno",
         "no-entry-found": "Zahtevanega vira ni moč najti",
         "integrity-error": "Napaka pri preverjanju integritete baze",
         "username-conflict-error": "To uporabniško ime je že zasedeno",
@@ -34,7 +45,8 @@
         "generic-created-with-url": "{name} je bil narejen, {url}",
         "generic-updated-with-url": "{name} je bil posodobljen, {url}",
         "generic-duplicated": "{name} je bilo podvojeno",
-        "generic-deleted": "{name} je bil izbrisan"
+        "generic-deleted": "{name} je bil izbrisan",
+        "logged-out": "Odjavljen/a"
     },
     "datetime": {
         "year": "leto|let",
@@ -44,5 +56,28 @@
         "second": "sekunda|sekunde",
         "millisecond": "milisekunda|milisekunde",
         "microsecond": "mikrosekunda|mikrosekunde"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie pozabljeno geslo",
+            "header_text": "Pozabljeno geslo",
+            "message_top": "Zahtevali ste ponastavitev gesla.",
+            "message_bottom": "Prosim kliknite na zgornji gumb za ponastavitev gesla.",
+            "button_text": "Ponastavitev gesla"
+        },
+        "invitation": {
+            "subject": "Povabilo za pridružitev na Mealie",
+            "header_text": "Ste povabljeni!",
+            "message_top": "Bili ste povabljeni za pridružitev na Mealie.",
+            "message_bottom": "Prosim, da za sprejem povabila kliknite na zgornji gumb.",
+            "button_text": "Spremite povabilo"
+        },
+        "test": {
+            "subject": "Mealie testni e-mail",
+            "header_text": "Testni e-mail",
+            "message_top": "To je testni e-mail.",
+            "message_bottom": "Prosim, da za e-mail testiranje kliknite zgornji gumb.",
+            "button_text": "Odpri Mealie"
+        }
     }
 }

@@ -1,13 +1,13 @@
-import { ref, Ref } from "@nuxtjs/composition-api";
-import { RequestResponse } from "~/lib/api/types/non-generated";
-import { ValidationResponse } from "~/lib/api/types/response";
-import { required, email, whitespace, url, minLength, maxLength } from "~/lib/validators";
+import type { RequestResponse } from "~/lib/api/types/non-generated";
+import type { ValidationResponse } from "~/lib/api/types/response";
+import { required, email, whitespace, url, urlOptional, minLength, maxLength } from "~/lib/validators";
 
 export const validators = {
   required,
   email,
   whitespace,
   url,
+  urlOptional,
   minLength,
   maxLength,
 };
@@ -21,7 +21,7 @@ export const useAsyncValidator = (
   value: Ref<string>,
   validatorFunc: (v: string) => Promise<RequestResponse<ValidationResponse>>,
   validatorMessage: string,
-  errorMessages: Ref<string[]>
+  errorMessages: Ref<string[]>,
 ) => {
   const valid = ref(false);
 

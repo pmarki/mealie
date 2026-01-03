@@ -1,101 +1,140 @@
 {
     "teaspoon": {
-        "name": "teaspoon",
+        "name": "teskeið",
+        "plural_name": "teskeiðar",
         "description": "",
-        "abbreviation": "tsp"
+        "abbreviation": "tsk"
     },
     "tablespoon": {
-        "name": "tablespoon",
+        "name": "matskeið",
+        "plural_name": "matskeiðar",
         "description": "",
-        "abbreviation": "tbsp"
+        "abbreviation": "msk"
     },
     "cup": {
-        "name": "cup",
+        "name": "bolli",
+        "plural_name": "bollar",
         "description": "",
-        "abbreviation": "cup"
+        "abbreviation": "b"
     },
     "fluid-ounce": {
-        "name": "fluid ounce",
+        "name": "fljótandi únsa",
+        "plural_name": "fjótandi únsur",
         "description": "",
         "abbreviation": "fl oz"
     },
     "pint": {
         "name": "pint",
+        "plural_name": "pints",
         "description": "",
         "abbreviation": "pt"
     },
     "quart": {
         "name": "quart",
+        "plural_name": "quarts",
         "description": "",
         "abbreviation": "qt"
     },
     "gallon": {
         "name": "gallon",
+        "plural_name": "gallon",
         "description": "",
         "abbreviation": "gal"
     },
     "milliliter": {
-        "name": "milliliter",
+        "name": "millilíter",
+        "plural_name": "millilítrar",
         "description": "",
         "abbreviation": "ml"
     },
     "liter": {
-        "name": "liter",
+        "name": "líter",
+        "plural_name": "lítrar",
         "description": "",
         "abbreviation": "l"
     },
     "pound": {
-        "name": "pound",
+        "name": "pund",
+        "plural_name": "pund",
         "description": "",
-        "abbreviation": "lb"
+        "abbreviation": "lb",
+        "plural_abbreviation": "lbs"
     },
     "ounce": {
-        "name": "ounce",
+        "name": "únsa",
+        "plural_name": "únsur",
         "description": "",
         "abbreviation": "oz"
     },
     "gram": {
-        "name": "gram",
+        "name": "gramm",
+        "plural_name": "grömm",
         "description": "",
         "abbreviation": "g"
     },
     "kilogram": {
-        "name": "kilogram",
+        "name": "kílógramm",
+        "plural_name": "kílógrömm",
         "description": "",
         "abbreviation": "kg"
     },
     "milligram": {
-        "name": "milligram",
+        "name": "milligramm",
+        "plural_name": "milligrömm",
         "description": "",
         "abbreviation": "mg"
     },
     "splash": {
-        "name": "splash",
+        "name": "skvetta",
+        "plural_name": "skvettur",
         "description": "",
         "abbreviation": ""
     },
     "dash": {
-        "name": "dash",
+        "name": "dass",
+        "plural_name": "dass",
         "description": "",
         "abbreviation": ""
     },
     "serving": {
-        "name": "serving",
+        "name": "skammtur",
+        "plural_name": "skammtar",
         "description": "",
         "abbreviation": ""
     },
     "head": {
-        "name": "head",
+        "name": "haus",
+        "plural_name": "hausar",
         "description": "",
         "abbreviation": ""
     },
     "clove": {
-        "name": "clove",
+        "name": "geiri",
+        "plural_name": "geirar",
         "description": "",
         "abbreviation": ""
     },
     "can": {
-        "name": "can",
+        "name": "dós",
+        "plural_name": "dósir",
+        "description": "",
+        "abbreviation": ""
+    },
+    "bunch": {
+        "name": "búnt",
+        "plural_name": "búnt",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pack": {
+        "name": "pakki",
+        "plural_name": "pakkar",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pinch": {
+        "name": "klípa",
+        "plural_name": "klípur",
         "description": "",
         "abbreviation": ""
     }

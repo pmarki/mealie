@@ -3,20 +3,21 @@ from __future__ import annotations
 import re
 from collections import deque
 from enum import Enum
-from typing import Any, TypeVar, cast
+from typing import Any, cast
 from uuid import UUID
 
+import sqlalchemy as sa
 from dateutil import parser as date_parser
 from dateutil.parser import ParserError
 from humps import decamelize
-from sqlalchemy import ColumnElement, Select, and_, inspect, or_
+from sqlalchemy.ext.associationproxy import AssociationProxyInstance
 from sqlalchemy.orm import InstrumentedAttribute, Mapper
 from sqlalchemy.sql import sqltypes
 
 from mealie.db.models._model_base import SqlAlchemyBase
+from mealie.db.models._model_utils.datetime import NaiveDateTime
 from mealie.db.models._model_utils.guid import GUID
-
-Model = TypeVar("Model", bound=SqlAlchemyBase)
+from mealie.schema._mealie.mealie_model import MealieModel
 
 
 class RelationalKeyword(Enum):
@@ -102,7 +103,21 @@ class LogicalOperator(Enum):
     OR = "OR"
 
 
-class QueryFilterComponent:
+class QueryFilterJSONPart(MealieModel):
+    left_parenthesis: str | None = None
+    right_parenthesis: str | None = None
+    logical_operator: LogicalOperator | None = None
+
+    attribute_name: str | None = None
+    relational_operator: RelationalKeyword | RelationalOperator | None = None
+    value: str | list[str] | None = None
+
+
+class QueryFilterJSON(MealieModel):
+    parts: list[QueryFilterJSONPart] = []
+
+
+class QueryFilterBuilderComponent:
     """A single relational statement"""
 
     @staticmethod
@@ -133,7 +148,7 @@ class QueryFilterComponent:
         ] and not isinstance(value, list):
             raise ValueError(
                 f"invalid query string: {relationship.value} must be given a list of values"
-                f"enclosed by {QueryFilter.l_list_sep} and {QueryFilter.r_list_sep}"
+                f"enclosed by {QueryFilterBuilder.l_list_sep} and {QueryFilterBuilder.r_list_sep}"
             )
 
         if relationship is RelationalKeyword.IS or relationship is RelationalKeyword.IS_NOT:
@@ -156,12 +171,15 @@ class QueryFilterComponent:
         if not isinstance(self.value, list):
             sanitized_values = [self.value]
         else:
-            sanitized_values = self.value
+            sanitized_values = list(self.value)
 
         for i, v in enumerate(sanitized_values):
             # always allow querying for null values
             if v is None:
                 continue
+
+            if isinstance(model_attr_type, sqltypes.String):
+                sanitized_values[i] = v.lower()
 
             if self.relationship is RelationalKeyword.LIKE or self.relationship is RelationalKeyword.NOT_LIKE:
                 if not isinstance(model_attr_type, sqltypes.String):
@@ -176,7 +194,7 @@ class QueryFilterComponent:
                 except ValueError as e:
                     raise ValueError(f"invalid query string: invalid UUID '{v}'") from e
 
-            if isinstance(model_attr_type, sqltypes.Date | sqltypes.DateTime):
+            if isinstance(model_attr_type, sqltypes.Date | sqltypes.DateTime | NaiveDateTime):
                 try:
                     dt = date_parser.parse(v)
                     sanitized_values[i] = dt.date() if isinstance(model_attr_type, sqltypes.Date) else dt
@@ -191,8 +209,18 @@ class QueryFilterComponent:
 
         return sanitized_values if isinstance(self.value, list) else sanitized_values[0]
 
+    def as_json_model(self) -> QueryFilterJSONPart:
+        return QueryFilterJSONPart(
+            left_parenthesis=None,
+            right_parenthesis=None,
+            logical_operator=None,
+            attribute_name=self.attribute_name,
+            relational_operator=self.relationship,
+            value=self.value,
+        )
 
-class QueryFilter:
+
+class QueryFilterBuilder:
     l_group_sep: str = "("
     r_group_sep: str = ")"
     group_seps: set[str] = {l_group_sep, r_group_sep}
@@ -203,13 +231,15 @@ class QueryFilter:
 
     def __init__(self, filter_string: str) -> None:
         # parse filter string
-        components = QueryFilter._break_filter_string_into_components(filter_string)
-        base_components = QueryFilter._break_components_into_base_components(components)
-        if base_components.count(QueryFilter.l_group_sep) != base_components.count(QueryFilter.r_group_sep):
+        components = QueryFilterBuilder._break_filter_string_into_components(filter_string)
+        base_components = QueryFilterBuilder._break_components_into_base_components(components)
+        if base_components.count(QueryFilterBuilder.l_group_sep) != base_components.count(
+            QueryFilterBuilder.r_group_sep
+        ):
             raise ValueError("invalid query string: parenthesis are unbalanced")
 
         # parse base components into a filter group
-        self.filter_components = QueryFilter._parse_base_components_into_filter_components(base_components)
+        self.filter_components = QueryFilterBuilder._parse_base_components_into_filter_components(base_components)
 
     def __repr__(self) -> str:
         joined = " ".join(
@@ -222,17 +252,19 @@ class QueryFilter:
         return f"<<{joined}>>"
 
     @classmethod
-    def _consolidate_group(cls, group: list[ColumnElement], logical_operators: deque[LogicalOperator]) -> ColumnElement:
-        consolidated_group_builder: ColumnElement | None = None
+    def _consolidate_group(
+        cls, group: list[sa.ColumnElement], logical_operators: deque[LogicalOperator]
+    ) -> sa.ColumnElement:
+        consolidated_group_builder: sa.ColumnElement | None = None
         for i, element in enumerate(reversed(group)):
             if not i:
                 consolidated_group_builder = element
             else:
                 operator = logical_operators.pop()
                 if operator is LogicalOperator.AND:
-                    consolidated_group_builder = and_(consolidated_group_builder, element)
+                    consolidated_group_builder = sa.and_(consolidated_group_builder, element)
                 elif operator is LogicalOperator.OR:
-                    consolidated_group_builder = or_(consolidated_group_builder, element)
+                    consolidated_group_builder = sa.or_(consolidated_group_builder, element)
                 else:
                     raise ValueError(f"invalid logical operator {operator}")
 
@@ -240,9 +272,9 @@ class QueryFilter:
                 return consolidated_group_builder.self_group()
 
     @classmethod
-    def get_model_and_model_attr_from_attr_string(
-        cls, attr_string: str, model: type[Model], *, query: Select | None = None
-    ) -> tuple[SqlAlchemyBase, InstrumentedAttribute, Select | None]:
+    def get_model_and_model_attr_from_attr_string[Model: SqlAlchemyBase](
+        cls, attr_string: str, model: type[Model], *, query: sa.Select | None = None
+    ) -> tuple[SqlAlchemyBase, InstrumentedAttribute, sa.Select | None]:
         """
         Take an attribute string and traverse a database model and its relationships to get the desired
         model and model attribute. Optionally provide a query to apply the necessary table joins.
@@ -255,8 +287,10 @@ class QueryFilter:
         Works with shallow attributes (e.g. "slug" from `RecipeModel`)
         and arbitrarily deep ones (e.g. "recipe.group.preferences" on `RecipeTimelineEvent`).
         """
+        mapper: Mapper
         model_attr: InstrumentedAttribute | None = None
-        attribute_chain = attr_string.split(".")
+
+        attribute_chain = decamelize(attr_string).split(".")
         if not attribute_chain:
             raise ValueError("invalid query string: attribute name cannot be empty")
 
@@ -265,16 +299,29 @@ class QueryFilter:
             try:
                 model_attr = getattr(current_model, attribute_link)
 
+                # proxied attributes can't be joined to the query directly, so we need to inspect the proxy
+                # and get the actual model and its attribute
+                if isinstance(model_attr, AssociationProxyInstance):
+                    proxied_attribute_link = model_attr.target_collection
+                    next_attribute_link = model_attr.value_attr
+                    model_attr = getattr(current_model, proxied_attribute_link)
+
+                    if query is not None:
+                        query = query.join(model_attr, isouter=True)
+
+                    mapper = sa.inspect(current_model)
+                    relationship = mapper.relationships[proxied_attribute_link]
+                    current_model = relationship.mapper.class_
+                    model_attr = getattr(current_model, next_attribute_link)
+
                 # at the end of the chain there are no more relationships to inspect
                 if i == len(attribute_chain) - 1:
                     break
 
                 if query is not None:
-                    query = query.join(
-                        model_attr, isouter=True
-                    )  # we use outer joins to not unintentionally filter out values
+                    query = query.join(model_attr, isouter=True)
 
-                mapper: Mapper = inspect(current_model)
+                mapper = sa.inspect(current_model)
                 relationship = mapper.relationships[attribute_link]
                 current_model = relationship.mapper.class_
 
@@ -286,12 +333,83 @@ class QueryFilter:
 
         return current_model, model_attr, query
 
-    def filter_query(self, query: Select, model: type[Model]) -> Select:
+    @classmethod
+    def _transform_model_attr(cls, model_attr: InstrumentedAttribute, model_attr_type: Any) -> InstrumentedAttribute:
+        if isinstance(model_attr_type, sqltypes.String):
+            model_attr = sa.func.lower(model_attr)
+
+        return model_attr
+
+    @classmethod
+    def _get_filter_element[Model: SqlAlchemyBase](
+        cls,
+        query: sa.Select,
+        component: QueryFilterBuilderComponent,
+        model: type[Model],
+        model_attr: InstrumentedAttribute,
+        model_attr_type: Any,
+    ) -> sa.ColumnElement:
+        original_model_attr = model_attr
+        model_attr = cls._transform_model_attr(model_attr, model_attr_type)
+        value = component.validate(model_attr_type)
+
+        # Keywords
+        if component.relationship is RelationalKeyword.IS:
+            element = model_attr.is_(value)
+        elif component.relationship is RelationalKeyword.IS_NOT:
+            element = model_attr.is_not(value)
+        elif component.relationship is RelationalKeyword.IN:
+            element = model_attr.in_(value)
+        elif component.relationship is RelationalKeyword.NOT_IN:
+            if original_model_attr.parent.entity != model:
+                subq = query.with_only_columns(model.id).where(model_attr.in_(value))
+                element = sa.not_(model.id.in_(subq))
+            else:
+                element = sa.not_(model_attr.in_(value))
+
+        elif component.relationship is RelationalKeyword.CONTAINS_ALL:
+            if len(value) == 1:
+                element = model_attr.in_(value)
+            else:
+                primary_model_attr: InstrumentedAttribute = getattr(model, component.attribute_name.split(".")[0])
+                element = sa.and_(*(primary_model_attr.any(model_attr == v) for v in value))
+        elif component.relationship is RelationalKeyword.LIKE:
+            element = model_attr.ilike(value)
+        elif component.relationship is RelationalKeyword.NOT_LIKE:
+            element = model_attr.not_ilike(value)
+
+        # Operators
+        elif component.relationship is RelationalOperator.EQ:
+            element = model_attr == value
+        elif component.relationship is RelationalOperator.NOTEQ:
+            element = model_attr != value
+        elif component.relationship is RelationalOperator.GT:
+            element = model_attr > value
+        elif component.relationship is RelationalOperator.LT:
+            element = model_attr < value
+        elif component.relationship is RelationalOperator.GTE:
+            element = model_attr >= value
+        elif component.relationship is RelationalOperator.LTE:
+            element = model_attr <= value
+        else:
+            raise ValueError(f"invalid relationship {component.relationship}")
+
+        return element
+
+    def filter_query[Model: SqlAlchemyBase](
+        self, query: sa.Select, model: type[Model], column_aliases: dict[str, sa.ColumnElement] | None = None
+    ) -> sa.Select:
+        """
+        Filters a query based on the parsed filter string.
+        If you need to filter on a custom column expression (e.g. a computed property), you can supply column aliases
+        """
+        column_aliases = column_aliases or {}
+
         # join tables and build model chain
         attr_model_map: dict[int, Any] = {}
         model_attr: InstrumentedAttribute
         for i, component in enumerate(self.filter_components):
-            if not isinstance(component, QueryFilterComponent):
+            if not isinstance(component, QueryFilterBuilderComponent):
                 continue
 
             nested_model, model_attr, query = self.get_model_and_model_attr_from_attr_string(
@@ -300,8 +418,8 @@ class QueryFilter:
             attr_model_map[i] = nested_model
 
         # build query filter
-        partial_group: list[ColumnElement] = []
-        partial_group_stack: deque[list[ColumnElement]] = deque()
+        partial_group: list[sa.ColumnElement] = []
+        partial_group_stack: deque[list[sa.ColumnElement]] = deque()
         logical_operator_stack: deque[LogicalOperator] = deque()
         for i, component in enumerate(self.filter_components):
             if component == self.l_group_sep:
@@ -320,44 +438,14 @@ class QueryFilter:
                 logical_operator_stack.append(component)
 
             else:
-                component = cast(QueryFilterComponent, component)
-                model_attr = getattr(attr_model_map[i], component.attribute_name.split(".")[-1])
+                component = cast(QueryFilterBuilderComponent, component)
+                base_attribute_name = component.attribute_name.split(".")[-1]
+                model_attr = getattr(attr_model_map[i], base_attribute_name)
 
-                # Keywords
-                if component.relationship is RelationalKeyword.IS:
-                    element = model_attr.is_(component.validate(model_attr.type))
-                elif component.relationship is RelationalKeyword.IS_NOT:
-                    element = model_attr.is_not(component.validate(model_attr.type))
-                elif component.relationship is RelationalKeyword.IN:
-                    element = model_attr.in_(component.validate(model_attr.type))
-                elif component.relationship is RelationalKeyword.NOT_IN:
-                    element = model_attr.not_in(component.validate(model_attr.type))
-                elif component.relationship is RelationalKeyword.CONTAINS_ALL:
-                    primary_model_attr: InstrumentedAttribute = getattr(model, component.attribute_name.split(".")[0])
-                    element = and_()
-                    for v in component.validate(model_attr.type):
-                        element = and_(element, primary_model_attr.any(model_attr == v))
-                elif component.relationship is RelationalKeyword.LIKE:
-                    element = model_attr.like(component.validate(model_attr.type))
-                elif component.relationship is RelationalKeyword.NOT_LIKE:
-                    element = model_attr.not_like(component.validate(model_attr.type))
+                if (column_alias := column_aliases.get(base_attribute_name)) is not None:
+                    model_attr = column_alias
 
-                # Operators
-                elif component.relationship is RelationalOperator.EQ:
-                    element = model_attr == component.validate(model_attr.type)
-                elif component.relationship is RelationalOperator.NOTEQ:
-                    element = model_attr != component.validate(model_attr.type)
-                elif component.relationship is RelationalOperator.GT:
-                    element = model_attr > component.validate(model_attr.type)
-                elif component.relationship is RelationalOperator.LT:
-                    element = model_attr < component.validate(model_attr.type)
-                elif component.relationship is RelationalOperator.GTE:
-                    element = model_attr >= component.validate(model_attr.type)
-                elif component.relationship is RelationalOperator.LTE:
-                    element = model_attr <= component.validate(model_attr.type)
-                else:
-                    raise ValueError(f"invalid relationship {component.relationship}")
-
+                element = self._get_filter_element(query, component, model, model_attr, model_attr.type)
                 partial_group.append(element)
 
         # combine the completed groups into one filter
@@ -378,7 +466,7 @@ class QueryFilter:
             subcomponents = []
             for component in components:
                 # don't parse components comprised of only a separator
-                if component in QueryFilter.group_seps:
+                if component in QueryFilterBuilder.group_seps:
                     subcomponents.append(component)
                     continue
 
@@ -389,7 +477,7 @@ class QueryFilter:
                     if c == '"':
                         in_quotes = not in_quotes
 
-                    if c in QueryFilter.group_seps and not in_quotes:
+                    if c in QueryFilterBuilder.group_seps and not in_quotes:
                         if new_component:
                             subcomponents.append(new_component)
 
@@ -420,17 +508,17 @@ class QueryFilter:
         list_value_components = []
         for component in components:
             # parse out lists as their own singular sub component
-            subcomponents = component.split(QueryFilter.l_list_sep)
+            subcomponents = component.split(QueryFilterBuilder.l_list_sep)
             for i, subcomponent in enumerate(subcomponents):
                 if not i:
                     continue
 
-                for j, list_value_string in enumerate(subcomponent.split(QueryFilter.r_list_sep)):
+                for j, list_value_string in enumerate(subcomponent.split(QueryFilterBuilder.r_list_sep)):
                     if j % 2:
                         continue
 
                     list_value_components.append(
-                        [val.strip() for val in list_value_string.split(QueryFilter.list_item_sep)]
+                        [val.strip() for val in list_value_string.split(QueryFilterBuilder.list_item_sep)]
                     )
 
             quote_offset = 0
@@ -438,16 +526,16 @@ class QueryFilter:
             for i, subcomponent in enumerate(subcomponents):
                 # we are in a list subcomponent, which is already handled
                 if in_list:
-                    if QueryFilter.r_list_sep in subcomponent:
+                    if QueryFilterBuilder.r_list_sep in subcomponent:
                         # filter out the remainder of the list subcomponent and continue parsing
                         base_components.append(list_value_components.pop(0))
-                        subcomponent = subcomponent.split(QueryFilter.r_list_sep, maxsplit=1)[-1].strip()
+                        subcomponent = subcomponent.split(QueryFilterBuilder.r_list_sep, maxsplit=1)[-1].strip()
                         in_list = False
                     else:
                         continue
 
                 # don't parse components comprised of only a separator
-                if subcomponent in QueryFilter.group_seps:
+                if subcomponent in QueryFilterBuilder.group_seps:
                     quote_offset += 1
                     base_components.append(subcomponent)
                     continue
@@ -462,8 +550,8 @@ class QueryFilter:
                     continue
 
                 # continue parsing this subcomponent up to the list, then skip over subsequent subcomponents
-                if not in_list and QueryFilter.l_list_sep in subcomponent:
-                    subcomponent, _new_sub_component = subcomponent.split(QueryFilter.l_list_sep, maxsplit=1)
+                if not in_list and QueryFilterBuilder.l_list_sep in subcomponent:
+                    subcomponent, _new_sub_component = subcomponent.split(QueryFilterBuilder.l_list_sep, maxsplit=1)
                     subcomponent = subcomponent.strip()
                     subcomponents.insert(i + 1, _new_sub_component)
                     quote_offset += 1
@@ -499,19 +587,19 @@ class QueryFilter:
     @staticmethod
     def _parse_base_components_into_filter_components(
         base_components: list[str | list[str]],
-    ) -> list[str | QueryFilterComponent | LogicalOperator]:
+    ) -> list[str | QueryFilterBuilderComponent | LogicalOperator]:
         """Walk through base components and construct filter collections"""
         relational_keywords = [kw.value for kw in RelationalKeyword]
         relational_operators = [op.value for op in RelationalOperator]
         logical_operators = [op.value for op in LogicalOperator]
 
         # parse QueryFilterComponents and logical operators
-        components: list[str | QueryFilterComponent | LogicalOperator] = []
+        components: list[str | QueryFilterBuilderComponent | LogicalOperator] = []
         for i, base_component in enumerate(base_components):
             if isinstance(base_component, list):
                 continue
 
-            if base_component in QueryFilter.group_seps:
+            if base_component in QueryFilterBuilder.group_seps:
                 components.append(base_component)
 
             elif base_component in relational_keywords or base_component in relational_operators:
@@ -522,7 +610,7 @@ class QueryFilter:
                     relationship = RelationalOperator(base_components[i])
 
                 components.append(
-                    QueryFilterComponent(
+                    QueryFilterBuilderComponent(
                         attribute_name=base_components[i - 1],  # type: ignore
                         relationship=relationship,
                         value=base_components[i + 1],
@@ -533,3 +621,47 @@ class QueryFilter:
                 components.append(LogicalOperator(base_component.upper()))
 
         return components
+
+    def as_json_model(self) -> QueryFilterJSON:
+        parts: list[QueryFilterJSONPart] = []
+
+        current_part: QueryFilterJSONPart | None = None
+        left_parens: list[str] = []
+        right_parens: list[str] = []
+        last_logical_operator: LogicalOperator | None = None
+
+        def add_part():
+            nonlocal current_part, left_parens, right_parens, last_logical_operator
+            if not current_part:
+                return
+
+            current_part.left_parenthesis = "".join(left_parens) or None
+            current_part.right_parenthesis = "".join(right_parens) or None
+            current_part.logical_operator = last_logical_operator
+
+            parts.append(current_part)
+            current_part = None
+            left_parens.clear()
+            right_parens.clear()
+            last_logical_operator = None
+
+        for component in self.filter_components:
+            if isinstance(component, QueryFilterBuilderComponent):
+                if current_part:
+                    add_part()
+                current_part = component.as_json_model()
+
+            elif isinstance(component, LogicalOperator):
+                if current_part:
+                    add_part()
+                last_logical_operator = component
+
+            elif isinstance(component, str):
+                if component == QueryFilterBuilder.l_group_sep:
+                    left_parens.append(component)
+                elif component == QueryFilterBuilder.r_group_sep:
+                    right_parens.append(component)
+
+        # add last part, if any
+        add_part()
+        return QueryFilterJSON(parts=parts)

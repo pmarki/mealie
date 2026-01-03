@@ -3,7 +3,7 @@ From Pydantic V1: https://github.com/pydantic/pydantic/blob/abcf81ec104d2da70894
 """
 
 import re
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta, timezone
 
 date_expr = r"(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})"
 time_expr = (
@@ -39,7 +39,7 @@ iso8601_duration_re = re.compile(
     r"$"
 )
 
-EPOCH = datetime(1970, 1, 1)
+EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 # if greater than this, the number is in ms, if less than or equal it's in seconds
 # (in seconds this is 11th October 2603, in ms it's 20th August 1970)
 MS_WATERSHED = int(2e10)
@@ -80,19 +80,19 @@ def get_numeric(value: str | bytes | int | float, native_expected_type: str) -> 
 
 def from_unix_seconds(seconds: int | float) -> datetime:
     if seconds > MAX_NUMBER:
-        return datetime.max
+        return datetime.max.replace(tzinfo=UTC)
     elif seconds < -MAX_NUMBER:
-        return datetime.min
+        return datetime.min.replace(tzinfo=UTC)
 
     while abs(seconds) > MS_WATERSHED:
         seconds /= 1000
     dt = EPOCH + timedelta(seconds=seconds)
-    return dt.replace(tzinfo=timezone.utc)
+    return dt.replace(tzinfo=UTC)
 
 
 def _parse_timezone(value: str | None, error: type[Exception]) -> None | int | timezone:
     if value == "Z":
-        return timezone.utc
+        return UTC
     elif value is not None:
         offset_mins = int(value[-2:]) if len(value) > 3 else 0
         offset = 60 * int(value[1:3]) + offset_mins
@@ -153,7 +153,7 @@ def parse_time(value: time | str | bytes | int | float) -> time:
         if number >= 86400:
             # doesn't make sense since the time time loop back around to 0
             raise TimeError()
-        return (datetime.min + timedelta(seconds=number)).time()
+        return (datetime.min.replace(tzinfo=UTC) + timedelta(seconds=number)).time()
 
     if isinstance(value, bytes):
         value = value.decode()
@@ -209,7 +209,7 @@ def parse_datetime(value: datetime | str | bytes | int | float) -> datetime:
     kw_["tzinfo"] = tzinfo
 
     try:
-        return datetime(**kw_)  # type: ignore
+        return datetime(**kw_)  # type: ignore # noqa DTZ001
     except ValueError as e:
         raise DateTimeError() from e
 

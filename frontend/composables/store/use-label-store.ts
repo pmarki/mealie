@@ -1,50 +1,26 @@
-import { reactive, ref, Ref } from "@nuxtjs/composition-api";
-import { useStoreActions } from "../partials/use-actions-factory";
-import { MultiPurposeLabelOut } from "~/lib/api/types/labels";
+import type { Composer } from "vue-i18n";
+import { useData, useStore } from "../partials/use-store-factory";
+import type { MultiPurposeLabelOut } from "~/lib/api/types/labels";
 import { useUserApi } from "~/composables/api";
 
-let labelStore: Ref<MultiPurposeLabelOut[] | null> = ref([]);
-const storeLoading = ref(false);
+const store: Ref<MultiPurposeLabelOut[]> = ref([]);
+const loading = ref(false);
 
-export function useLabelData() {
-  const data = reactive({
+export function resetLabelStore() {
+  store.value = [];
+  loading.value = false;
+}
+
+export const useLabelData = function () {
+  return useData<MultiPurposeLabelOut>({
     groupId: "",
     id: "",
     name: "",
     color: "",
   });
+};
 
-  function reset() {
-    data.groupId = "";
-    data.id = "";
-    data.name = "";
-    data.color = "";
-  }
-
-  return {
-    data,
-    reset,
-  };
-}
-
-export function useLabelStore() {
-  const api = useUserApi();
-  const loading = storeLoading;
-
-  const actions = {
-    ...useStoreActions<MultiPurposeLabelOut>(api.multiPurposeLabels, labelStore, loading),
-    flushStore() {
-      labelStore.value = [];
-    },
-  };
-
-  if (!loading.value && (!labelStore.value || labelStore.value?.length === 0)) {
-    labelStore = actions.getAll();
-  }
-
-  return {
-    labels: labelStore,
-    actions,
-    loading,
-  };
-}
+export const useLabelStore = function (i18n?: Composer) {
+  const api = useUserApi(i18n);
+  return useStore<MultiPurposeLabelOut>("label", store, loading, api.multiPurposeLabels);
+};

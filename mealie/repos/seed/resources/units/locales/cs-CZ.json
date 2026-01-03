@@ -1,101 +1,140 @@
 {
     "teaspoon": {
         "name": "čajová lžička",
+        "plural_name": "čajových lžiček",
         "description": "",
         "abbreviation": "čl"
     },
     "tablespoon": {
         "name": "polévková lžíce",
+        "plural_name": "polévkových lžic",
         "description": "",
         "abbreviation": "pl"
     },
     "cup": {
         "name": "šálek",
+        "plural_name": "šálků",
         "description": "",
-        "abbreviation": "šálek"
+        "abbreviation": "š"
     },
     "fluid-ounce": {
-        "name": "dutá unce",
+        "name": "tekutá unce",
+        "plural_name": "tekuté unce",
         "description": "",
-        "abbreviation": "fl oz"
+        "abbreviation": "tek. unce"
     },
     "pint": {
         "name": "pinta",
+        "plural_name": "pint",
         "description": "",
         "abbreviation": "pt"
     },
     "quart": {
         "name": "čtvrtka",
+        "plural_name": "čtvrtky",
         "description": "",
         "abbreviation": "čtvrtka"
     },
     "gallon": {
         "name": "galon",
+        "plural_name": "galonů",
         "description": "",
         "abbreviation": "gal"
     },
     "milliliter": {
         "name": "mililitr",
+        "plural_name": "mililitrů",
         "description": "",
         "abbreviation": "ml"
     },
     "liter": {
         "name": "litr",
+        "plural_name": "litrů",
         "description": "",
         "abbreviation": "l"
     },
     "pound": {
         "name": "libra",
+        "plural_name": "liber",
         "description": "",
-        "abbreviation": "lb"
+        "abbreviation": "lb",
+        "plural_abbreviation": "liber"
     },
     "ounce": {
         "name": "unce",
+        "plural_name": "uncí",
         "description": "",
-        "abbreviation": "oz"
+        "abbreviation": "unce"
     },
     "gram": {
         "name": "gram",
+        "plural_name": "gramů",
         "description": "",
         "abbreviation": "g"
     },
     "kilogram": {
         "name": "kilogram",
+        "plural_name": "kilogramů",
         "description": "",
         "abbreviation": "kg"
     },
     "milligram": {
         "name": "miligram",
+        "plural_name": "miligramů",
         "description": "",
         "abbreviation": "mg"
     },
     "splash": {
         "name": "kapka",
+        "plural_name": "kapky",
         "description": "",
         "abbreviation": ""
     },
     "dash": {
         "name": "špetka",
+        "plural_name": "špetky",
         "description": "",
         "abbreviation": ""
     },
     "serving": {
         "name": "porce",
+        "plural_name": "porcí",
         "description": "",
         "abbreviation": ""
     },
     "head": {
-        "name": "hlava",
+        "name": "hlávka",
+        "plural_name": "hlávky",
         "description": "",
         "abbreviation": ""
     },
     "clove": {
         "name": "stroužek",
+        "plural_name": "stroužky",
         "description": "",
         "abbreviation": ""
     },
     "can": {
-        "name": "plechovka",
+        "name": "konzerva",
+        "plural_name": "konzerv",
+        "description": "",
+        "abbreviation": ""
+    },
+    "bunch": {
+        "name": "svazek",
+        "plural_name": "svazků",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pack": {
+        "name": "balení",
+        "plural_name": "balení",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pinch": {
+        "name": "špetka",
+        "plural_name": "špetky",
         "description": "",
         "abbreviation": ""
     }

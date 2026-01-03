@@ -2,8 +2,7 @@ import contextlib
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from datetime import datetime, timezone
-from typing import cast
+from datetime import UTC, datetime
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from fastapi.encoders import jsonable_encoder
@@ -12,11 +11,10 @@ from sqlalchemy import select
 from sqlalchemy.orm.session import Session
 
 from mealie.db.db_setup import session_context
-from mealie.db.models.group.webhooks import GroupWebhooksModel
+from mealie.db.models.household.webhooks import GroupWebhooksModel
 from mealie.repos.repository_factory import AllRepositories
-from mealie.schema.group.group_events import GroupEventNotifierPrivate
-from mealie.schema.group.webhook import ReadWebhook
-from mealie.schema.response.pagination import PaginationQuery
+from mealie.schema.household.group_events import GroupEventNotifierPrivate
+from mealie.schema.household.webhook import ReadWebhook
 
 from .event_types import Event, EventDocumentType, EventTypes, EventWebhookData
 from .publisher import ApprisePublisher, PublisherLike, WebhookPublisher
@@ -26,8 +24,9 @@ class EventListenerBase(ABC):
     _session: Session | None = None
     _repos: AllRepositories | None = None
 
-    def __init__(self, group_id: UUID4, publisher: PublisherLike) -> None:
+    def __init__(self, group_id: UUID4, household_id: UUID4, publisher: PublisherLike) -> None:
         self.group_id = group_id
+        self.household_id = household_id
         self.publisher = publisher
         self._session = None
         self._repos = None
@@ -61,24 +60,24 @@ class EventListenerBase(ABC):
             yield self._session
 
     @contextlib.contextmanager
-    def ensure_repos(self) -> Generator[AllRepositories, None, None]:
+    def ensure_repos(self, group_id: UUID4, household_id: UUID4) -> Generator[AllRepositories, None, None]:
         if self._repos is None:
             with self.ensure_session() as session:
-                self._repos = AllRepositories(session)
+                self._repos = AllRepositories(session, group_id=group_id, household_id=household_id)
                 yield self._repos
         else:
             yield self._repos
 
 
 class AppriseEventListener(EventListenerBase):
-    def __init__(self, group_id: UUID4) -> None:
-        super().__init__(group_id, ApprisePublisher())
+    def __init__(self, group_id: UUID4, household_id: UUID4) -> None:
+        super().__init__(group_id, household_id, ApprisePublisher())
 
     def get_subscribers(self, event: Event) -> list[str]:
-        with self.ensure_repos() as repos:
-            notifiers: list[GroupEventNotifierPrivate] = repos.group_event_notifier.by_group(  # type: ignore
-                self.group_id
-            ).multi_query({"enabled": True}, override_schema=GroupEventNotifierPrivate)
+        with self.ensure_repos(self.group_id, self.household_id) as repos:
+            notifiers: list[GroupEventNotifierPrivate] = repos.group_event_notifier.multi_query(
+                {"enabled": True}, override_schema=GroupEventNotifierPrivate
+            )
 
             urls = [notifier.apprise_url for notifier in notifiers if getattr(notifier.options, event.event_type.name)]
             urls = AppriseEventListener.update_urls_with_event_data(urls, event)
@@ -122,12 +121,19 @@ class AppriseEventListener(EventListenerBase):
 
     @staticmethod
     def is_custom_url(url: str):
-        return url.split(":", 1)[0].lower() in ["form", "forms", "json", "jsons", "xml", "xmls"]
+        return url.split(":", 1)[0].lower() in [
+            "form",
+            "forms",
+            "json",
+            "jsons",
+            "xml",
+            "xmls",
+        ]
 
 
 class WebhookEventListener(EventListenerBase):
-    def __init__(self, group_id: UUID4) -> None:
-        super().__init__(group_id, WebhookPublisher())
+    def __init__(self, group_id: UUID4, household_id: UUID4) -> None:
+        super().__init__(group_id, household_id, WebhookPublisher())
 
     def get_subscribers(self, event: Event) -> list[ReadWebhook]:
         # we only care about events that contain webhook information
@@ -140,23 +146,34 @@ class WebhookEventListener(EventListenerBase):
         return scheduled_webhooks
 
     def publish_to_subscribers(self, event: Event, subscribers: list[ReadWebhook]) -> None:
-        with self.ensure_repos() as repos:
-            if event.document_data.document_type == EventDocumentType.mealplan:
-                # TODO: limit mealplan data to a date range instead of returning all mealplans
-                meal_repo = repos.meals.by_group(self.group_id)
-                meal_pagination_data = meal_repo.page_all(pagination=PaginationQuery(page=1, per_page=-1))
-                meal_data = meal_pagination_data.items
-                if meal_data:
-                    webhook_data = cast(EventWebhookData, event.document_data)
-                    webhook_data.webhook_body = meal_data
-                    self.publisher.publish(event, [webhook.url for webhook in subscribers])
+        with self.ensure_repos(self.group_id, self.household_id) as repos:
+            if not isinstance(event.document_data, EventWebhookData):
+                return
+
+            match event.document_data.document_type:
+                case EventDocumentType.mealplan:
+                    meal_repo = repos.meals
+                    meal_data = meal_repo.get_meals_by_date_range(
+                        event.document_data.webhook_start_dt, event.document_data.webhook_end_dt
+                    )
+                    event.document_data.webhook_body = meal_data or None
+                case _:
+                    if event.event_type is EventTypes.test_message:
+                        # make sure the webhook has a valid body so it gets sent
+                        event.document_data.webhook_body = event.document_data.webhook_body or []
+
+            # Only publish to subscribers if we have a webhook body to send
+            if event.document_data.webhook_body is not None:
+                self.publisher.publish(event, [webhook.url for webhook in subscribers])
 
     def get_scheduled_webhooks(self, start_dt: datetime, end_dt: datetime) -> list[ReadWebhook]:
         """Fetches all scheduled webhooks from the database"""
         with self.ensure_session() as session:
             stmt = select(GroupWebhooksModel).where(
                 GroupWebhooksModel.enabled == True,  # noqa: E712 - required for SQLAlchemy comparison
-                GroupWebhooksModel.scheduled_time > start_dt.astimezone(timezone.utc).time(),
-                GroupWebhooksModel.scheduled_time <= end_dt.astimezone(timezone.utc).time(),
+                GroupWebhooksModel.scheduled_time > start_dt.astimezone(UTC).time(),
+                GroupWebhooksModel.scheduled_time <= end_dt.astimezone(UTC).time(),
+                GroupWebhooksModel.group_id == self.group_id,
+                GroupWebhooksModel.household_id == self.household_id,
             )
             return session.execute(stmt).scalars().all()

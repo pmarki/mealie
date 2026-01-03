@@ -10,7 +10,7 @@ from mealie.schema.reports.reports import ReportEntryCreate
 
 from ._migration_base import BaseMigrator
 from .utils.migration_alias import MigrationAlias
-from .utils.migration_helpers import import_image
+from .utils.migration_helpers import format_time
 
 
 def _build_ingredient_from_ingredient_data(ingredient_data: dict[str, Any], title: str | None = None) -> dict[str, Any]:
@@ -47,29 +47,11 @@ def extract_instructions_and_ingredients(steps: list[dict[str, Any]]) -> tuple[l
     return instructions, ingredients
 
 
-def _format_time(minutes: int) -> str:
-    # TODO: make this translatable
-    hour_label = "hour"
-    hours_label = "hours"
-    minute_label = "minute"
-    minutes_label = "minutes"
-
-    hours, minutes = divmod(minutes, 60)
-    parts: list[str] = []
-
-    if hours:
-        parts.append(f"{int(hours)} {hour_label if hours == 1 else hours_label}")
-    if minutes:
-        parts.append(f"{minutes} {minute_label if minutes == 1 else minutes_label}")
-
-    return " ".join(parts)
-
-
 def parse_times(working_time: int, waiting_time: int) -> tuple[str, str]:
     """Returns the performTime and totalTime"""
 
     total_time = working_time + waiting_time
-    return _format_time(working_time), _format_time(total_time)
+    return format_time(working_time), format_time(total_time)
 
 
 class TandoorMigrator(BaseMigrator):
@@ -92,10 +74,8 @@ class TandoorMigrator(BaseMigrator):
             recipe_data.pop("working_time", 0), recipe_data.pop("waiting_time", 0)
         )
 
-        serving_size = recipe_data.pop("servings", 0)
-        serving_text = recipe_data.pop("servings_text", "")
-        if serving_size and serving_text:
-            recipe_data["recipeYield"] = f"{serving_size} {serving_text}"
+        recipe_data["recipeYieldQuantity"] = recipe_data.pop("servings", 0)
+        recipe_data["recipeYield"] = recipe_data.pop("servings_text", "")
 
         try:
             recipe_image_path = next(source_dir.glob("image.*"))
@@ -109,12 +89,12 @@ class TandoorMigrator(BaseMigrator):
             with zipfile.ZipFile(self.archive) as zip_file:
                 zip_file.extractall(tmpdir)
 
-            source_dir = Path(tmpdir)
+            source_dir = self.get_zip_base_path(Path(tmpdir))
 
             recipes_as_dicts: list[dict] = []
             for i, recipe_zip_file in enumerate(source_dir.glob("*.zip")):
                 try:
-                    recipe_dir = str(source_dir.joinpath(f"recipe_{i+1}"))
+                    recipe_dir = str(source_dir.joinpath(f"recipe_{i + 1}"))
                     os.makedirs(recipe_dir)
 
                     with zipfile.ZipFile(recipe_zip_file) as recipe_zip:
@@ -152,4 +132,4 @@ class TandoorMigrator(BaseMigrator):
                     except StopIteration:
                         continue
 
-                    import_image(r.image, recipe_id)
+                    self.import_image(slug, r.image, recipe_id)

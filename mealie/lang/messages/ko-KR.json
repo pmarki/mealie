@@ -1,32 +1,43 @@
 {
     "generic": {
-        "server-error": "An unexpected error occurred"
+        "server-error": "예상하지 못한 에러가 발생했습니다."
     },
     "recipe": {
-        "unique-name-error": "Recipe names must be unique",
+        "unique-name-error": "Recipe 이름은 고유해야 합니다",
+        "recipe-created": "Recipe Created",
+        "recipe-image-deleted": "Recipe image deleted",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "밀가루 1컵",
+            "step-text": "Recipe 단계는 물론 recipe 페이지의 다른 필드도 Markdown 문법을 지원합니다.\n\n**Add a link**\n\n[\b나의 링크](https://demo.mealie.io)"
+        },
+        "servings-text": {
+            "makes": "Makes",
+            "serves": "Serves",
+            "serving": "Serving",
+            "servings": "Servings",
+            "yield": "Yield",
+            "yields": "Yields"
         }
     },
     "mealplan": {
-        "no-recipes-match-your-rules": "No recipes match your rules"
+        "no-recipes-match-your-rules": "규칙과 일치하는 Recipe가 없습니다"
     },
     "user": {
-        "user-updated": "User updated",
-        "password-updated": "Password updated",
-        "invalid-current-password": "Invalid current password",
-        "ldap-update-password-unavailable": "Unable to update password, user is controlled by LDAP"
+        "user-updated": "사용자 업데이트됨",
+        "password-updated": "비밀번호가 변경되었습니다",
+        "invalid-current-password": "현재 비밀번호가 잘못되었습니다",
+        "ldap-update-password-unavailable": "사용자가 LDAP으로 제어되기 때문에 비밀번호를 변경할 수 없습니다"
     },
     "group": {
-        "report-deleted": "Report deleted."
+        "report-deleted": "Report가 삭제됐습니다"
     },
     "exceptions": {
-        "permission_denied": "You do not have permission to perform this action",
-        "no-entry-found": "The requested resource was not found",
+        "permission_denied": "이 작업을 수행할 권한이 없습니다.",
+        "recursive-recipe-link": "A recipe cannot reference itself, either directly or indirectly",
+        "no-entry-found": "요청한 페이지를 찾을 수 없습니다. 주소를 정확히 입력했는지 확인해보세요.",
         "integrity-error": "Database integrity error",
-        "username-conflict-error": "This username is already taken",
-        "email-conflict-error": "This email is already in use"
+        "username-conflict-error": "이미 사용 중인 사용자 이름입니다.",
+        "email-conflict-error": "이 이메일은 이미 사용중입니다"
     },
     "notifications": {
         "generic-created": "{name} was created",
@@ -34,7 +45,8 @@
         "generic-created-with-url": "{name} has been created, {url}",
         "generic-updated-with-url": "{name} has been updated, {url}",
         "generic-duplicated": "{name} has been duplicated",
-        "generic-deleted": "{name} has been deleted"
+        "generic-deleted": "{name} has been deleted",
+        "logged-out": "Logged out"
     },
     "datetime": {
         "year": "year|years",
@@ -44,5 +56,28 @@
         "second": "second|seconds",
         "millisecond": "millisecond|milliseconds",
         "microsecond": "microsecond|microseconds"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie Forgot Password",
+            "header_text": "비밀번호를 분실",
+            "message_top": "비밀번호 재설정을 요청하셨습니다",
+            "message_bottom": "비밀번호를 변경하려면 아래 버튼을 클릭하십시오.",
+            "button_text": "비밀번호 재설정"
+        },
+        "invitation": {
+            "subject": "Invitation to join Mealie",
+            "header_text": "귀하는 초대되었습니다!",
+            "message_top": "You have been invited to join Mealie.",
+            "message_bottom": "Please click the button above to accept the invitation.",
+            "button_text": "초대 수락"
+        },
+        "test": {
+            "subject": "Mealie Test Email",
+            "header_text": "테스트 이메일",
+            "message_top": "이것은 테스트용 이메일입니다.",
+            "message_bottom": "비밀번호를 변경하려면 아래 버튼을 클릭하십시오.",
+            "button_text": "Open Mealie"
+        }
     }
 }

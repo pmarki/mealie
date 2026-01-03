@@ -1,40 +1,47 @@
-import { ref, useContext } from "@nuxtjs/composition-api";
 import { useUserApi } from "~/composables/api";
-import { UserRatingSummary } from "~/lib/api/types/user";
+import type { UserRatingSummary } from "~/lib/api/types/user";
 
 const userRatings = ref<UserRatingSummary[]>([]);
 const loading = ref(false);
 const ready = ref(false);
 
 export const useUserSelfRatings = function () {
-    const { $auth } = useContext();
+  const $auth = useMealieAuth();
+
+  async function refreshUserRatings() {
+    if (!$auth.user.value || loading.value) {
+      return;
+    }
+
+    loading.value = true;
     const api = useUserApi();
 
-    async function refreshUserRatings() {
-        if (loading.value) {
-            return;
-        }
+    const { data } = await api.users.getSelfRatings();
+    userRatings.value = data?.ratings || [];
 
-        loading.value = true;
-        const { data } = await api.users.getSelfRatings();
-        userRatings.value = data?.ratings || [];
-        loading.value = false;
-        ready.value = true;
-    }
+    loading.value = false;
+    ready.value = true;
+  }
 
-    async function setRating(slug: string, rating: number | null, isFavorite: boolean | null) {
-        loading.value = true;
-        const userId = $auth.user?.id || "";
-        await api.users.setRating(userId, slug, rating, isFavorite);
-        loading.value = false;
-        await refreshUserRatings();
-    }
+  async function setRating(slug: string, rating: number | null, isFavorite: boolean | null) {
+    loading.value = true;
+    const api = useUserApi();
 
+    const userId = $auth.user.value?.id || "";
+    await api.users.setRating(userId, slug, rating, isFavorite);
+
+    loading.value = false;
+    await refreshUserRatings();
+  }
+
+  if (!ready.value) {
     refreshUserRatings();
-    return {
-        userRatings,
-        refreshUserRatings,
-        setRating,
-        ready,
-    }
-}
+  }
+
+  return {
+    userRatings,
+    refreshUserRatings,
+    setRating,
+    ready,
+  };
+};

@@ -1,101 +1,140 @@
 {
     "teaspoon": {
         "name": "arbatinis šaukštelis",
+        "plural_name": "arbatiniai šaukšteliai",
         "description": "",
         "abbreviation": "a. š."
     },
     "tablespoon": {
         "name": "valgomasis šaukštas",
+        "plural_name": "valgomieji šaukštai",
         "description": "",
         "abbreviation": "valg. š."
     },
     "cup": {
         "name": "puodelis",
+        "plural_name": "stiklinės",
         "description": "",
-        "abbreviation": "puodelis"
+        "abbreviation": "stikl."
     },
     "fluid-ounce": {
         "name": "skysčio uncija",
+        "plural_name": "skysčio uncijos",
         "description": "",
         "abbreviation": "fl oz"
     },
     "pint": {
         "name": "pinta",
+        "plural_name": "pintos",
         "description": "",
         "abbreviation": "pt"
     },
     "quart": {
         "name": "qt",
+        "plural_name": "quarts",
         "description": "",
         "abbreviation": "qt"
     },
     "gallon": {
         "name": "galonas",
+        "plural_name": "galonai",
         "description": "",
         "abbreviation": "gal"
     },
     "milliliter": {
         "name": "mililitras",
+        "plural_name": "mililitrai",
         "description": "",
         "abbreviation": "ml"
     },
     "liter": {
         "name": "litras",
+        "plural_name": "litrų",
         "description": "",
         "abbreviation": "l"
     },
     "pound": {
         "name": "svaras",
+        "plural_name": "svarai",
         "description": "",
-        "abbreviation": "lb"
+        "abbreviation": "lb",
+        "plural_abbreviation": "svarai"
     },
     "ounce": {
         "name": "uncija",
+        "plural_name": "uncijos",
         "description": "",
         "abbreviation": "oz"
     },
     "gram": {
         "name": "gramas",
+        "plural_name": "gramų",
         "description": "",
         "abbreviation": "g"
     },
     "kilogram": {
         "name": "kilogramas",
+        "plural_name": "kilogramų",
         "description": "",
         "abbreviation": "kg"
     },
     "milligram": {
         "name": "miligramas",
+        "plural_name": "miligramų",
         "description": "",
         "abbreviation": "mg"
     },
     "splash": {
         "name": "šlakelis",
+        "plural_name": "šlakeliai",
         "description": "",
         "abbreviation": ""
     },
     "dash": {
         "name": "žiupsnelis",
+        "plural_name": "žiupsneliai",
         "description": "",
         "abbreviation": ""
     },
     "serving": {
-        "name": "porcijos",
+        "name": "porcija",
+        "plural_name": "porcijos",
         "description": "",
         "abbreviation": ""
     },
     "head": {
         "name": "galva",
+        "plural_name": "galvos",
         "description": "",
         "abbreviation": ""
     },
     "clove": {
         "name": "skiltelė",
+        "plural_name": "skiltelės",
         "description": "",
         "abbreviation": ""
     },
     "can": {
         "name": "skardinė",
+        "plural_name": "skardinės",
+        "description": "",
+        "abbreviation": ""
+    },
+    "bunch": {
+        "name": "saujelė",
+        "plural_name": "saujelės",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pack": {
+        "name": "pakelis",
+        "plural_name": "pakeliai",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pinch": {
+        "name": "žiupsnelis",
+        "plural_name": "žiupsneliai",
         "description": "",
         "abbreviation": ""
     }

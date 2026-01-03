@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
@@ -8,10 +8,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from mealie.schema.group.group_migration import SupportedMigrations
+from mealie.schema.recipe.recipe import Recipe
 from mealie.schema.reports.reports import ReportEntryOut
 from tests import data as test_data
 from tests.utils import api_routes
-from tests.utils.assertion_helpers import assert_derserialize
+from tests.utils.assertion_helpers import assert_deserialize
 from tests.utils.fixture_schemas import TestUser
 
 
@@ -19,17 +20,100 @@ from tests.utils.fixture_schemas import TestUser
 class MigrationTestData:
     typ: SupportedMigrations
     archive: Path
+    search_slug: str
+
+    nutrition_filter: set[str] = field(default_factory=set)
+    nutrition_entries: set[str] = field(
+        default_factory=lambda: {
+            "calories",
+            "carbohydrateContent",
+            "cholesterolContent",
+            "fatContent",
+            "fiberContent",
+            "proteinContent",
+            "saturatedFatContent",
+            "sodiumContent",
+            "sugarContent",
+            "transFatContent",
+            "unsaturatedFatContent",
+        }
+    )
 
 
 test_cases = [
-    MigrationTestData(typ=SupportedMigrations.nextcloud, archive=test_data.migrations_nextcloud),
-    MigrationTestData(typ=SupportedMigrations.paprika, archive=test_data.migrations_paprika),
-    MigrationTestData(typ=SupportedMigrations.chowdown, archive=test_data.migrations_chowdown),
-    MigrationTestData(typ=SupportedMigrations.copymethat, archive=test_data.migrations_copymethat),
-    MigrationTestData(typ=SupportedMigrations.mealie_alpha, archive=test_data.migrations_mealie),
-    MigrationTestData(typ=SupportedMigrations.tandoor, archive=test_data.migrations_tandoor),
-    MigrationTestData(typ=SupportedMigrations.plantoeat, archive=test_data.migrations_plantoeat),
-    MigrationTestData(typ=SupportedMigrations.myrecipebox, archive=test_data.migrations_myrecipebox),
+    MigrationTestData(
+        typ=SupportedMigrations.nextcloud,
+        archive=test_data.migrations_nextcloud,
+        search_slug="skillet-shepherd-s-pie",
+        nutrition_filter={
+            "transFatContent",
+            "unsaturatedFatContent",
+        },
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.paprika,
+        archive=test_data.migrations_paprika,
+        search_slug="zucchini-kartoffel-frittata",
+        nutrition_entries=set(),
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.chowdown,
+        archive=test_data.migrations_chowdown,
+        search_slug="roasted-okra",
+        nutrition_entries=set(),
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.copymethat,
+        archive=test_data.migrations_copymethat,
+        search_slug="spam-zoodles",
+        nutrition_entries=set(),
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.mealie_alpha,
+        archive=test_data.migrations_mealie,
+        search_slug="old-fashioned-beef-stew",
+        nutrition_filter={
+            "cholesterolContent",
+            "saturatedFatContent",
+            "transFatContent",
+            "unsaturatedFatContent",
+        },
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.tandoor,
+        archive=test_data.migrations_tandoor,
+        search_slug="texas-red-chili",
+        nutrition_entries=set(),
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.plantoeat,
+        archive=test_data.migrations_plantoeat,
+        search_slug="test-recipe",
+        nutrition_filter={
+            "unsaturatedFatContent",
+            "transFatContent",
+        },
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.myrecipebox,
+        archive=test_data.migrations_myrecipebox,
+        search_slug="beef-cheese-piroshki",
+        nutrition_filter={
+            "cholesterolContent",
+        },
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.recipekeeper,
+        archive=test_data.migrations_recipekeeper,
+        search_slug="zucchini-bread",
+        nutrition_entries=set(),
+    ),
+    MigrationTestData(
+        typ=SupportedMigrations.cookn,
+        archive=test_data.migrations_cookn,
+        search_slug="fresh-fruit-pizza",
+        nutrition_entries=set(),
+    ),
 ]
 
 test_ids = [
@@ -41,11 +125,14 @@ test_ids = [
     "tandoor_archive",
     "plantoeat_archive",
     "myrecipebox_csv",
+    "recipekeeper_archive",
+    "cookn_archive",
 ]
 
 
 @pytest.mark.parametrize("mig", test_cases, ids=test_ids)
-def test_recipe_migration(api_client: TestClient, unique_user: TestUser, mig: MigrationTestData) -> None:
+def test_recipe_migration(api_client: TestClient, unique_user_fn_scoped: TestUser, mig: MigrationTestData) -> None:
+    unique_user = unique_user_fn_scoped
     payload = {
         "migration_type": mig.typ.value,
     }
@@ -55,7 +142,10 @@ def test_recipe_migration(api_client: TestClient, unique_user: TestUser, mig: Mi
     }
 
     response = api_client.post(
-        api_routes.groups_migrations, data=payload, files=file_payload, headers=unique_user.token
+        api_routes.groups_migrations,
+        data=payload,
+        files=file_payload,
+        headers=unique_user.token,
     )
 
     assert response.status_code == 200
@@ -75,16 +165,29 @@ def test_recipe_migration(api_client: TestClient, unique_user: TestUser, mig: Mi
     # Validate Create Event
     params = {"orderBy": "created_at", "orderDirection": "desc"}
     response = api_client.get(api_routes.recipes, params=params, headers=unique_user.token)
-    query_data = assert_derserialize(response)
+    query_data = assert_deserialize(response)
     assert len(query_data["items"])
 
     recipe_id = query_data["items"][0]["id"]
     params = {"queryFilter": f"recipe_id={recipe_id}"}
 
     response = api_client.get(api_routes.recipes_timeline_events, params=params, headers=unique_user.token)
-    query_data = assert_derserialize(response)
+    query_data = assert_deserialize(response)
     events = query_data["items"]
     assert len(events)
+
+    # Validate recipe content
+    response = api_client.get(api_routes.recipes_slug(mig.search_slug), headers=unique_user.token)
+    recipe = Recipe(**assert_deserialize(response))
+
+    if mig.nutrition_entries:
+        assert recipe.nutrition is not None
+        nutrition = recipe.nutrition.model_dump(by_alias=True)
+
+        for k in mig.nutrition_entries.difference(mig.nutrition_filter):
+            assert k in nutrition and nutrition[k] is not None
+
+    # TODO: validate other types of content
 
 
 def test_bad_mealie_alpha_data_is_ignored(api_client: TestClient, unique_user: TestUser):
@@ -99,7 +202,7 @@ def test_bad_mealie_alpha_data_is_ignored(api_client: TestClient, unique_user: T
             with open(invalid_json_path, "w"):
                 pass  # write nothing to the file, which is invalid JSON
         except Exception:
-            raise Exception(os.listdir(tmpdir))
+            raise Exception(os.listdir(tmpdir))  # noqa: B904
 
         modified_test_data = os.path.join(tmpdir, "modified-test-data.zip")
         with ZipFile(modified_test_data, "w") as zf:
@@ -117,7 +220,10 @@ def test_bad_mealie_alpha_data_is_ignored(api_client: TestClient, unique_user: T
         }
 
         response = api_client.post(
-            api_routes.groups_migrations, data=payload, files=file_payload, headers=unique_user.token
+            api_routes.groups_migrations,
+            data=payload,
+            files=file_payload,
+            headers=unique_user.token,
         )
 
         assert response.status_code == 200

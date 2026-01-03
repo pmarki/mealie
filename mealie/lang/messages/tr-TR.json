@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Tarif adları benzersiz olmalıdır",
+        "recipe-created": "Tarif oluşturuldu",
+        "recipe-image-deleted": "Recipe image deleted",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "1 Bardak Un",
+            "step-text": "Tarif sayfasındaki tarif adımlarının yanı sıra diğer alanlar da markdown destekler.\n\n**Bağlantı ekle**\n\n[Bağlantım](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Makes",
+            "serves": "Serves",
+            "serving": "Serving",
+            "servings": "Servings",
+            "yield": "Yield",
+            "yields": "Yields"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Bu eylemi gerçekleştirme izniniz yok",
+        "recursive-recipe-link": "A recipe cannot reference itself, either directly or indirectly",
         "no-entry-found": "İstenen kaynak bulunamadı",
         "integrity-error": "Veritabanı bütünlüğü hatası",
         "username-conflict-error": "Bu kullanıcı adı zaten alınmış",
@@ -34,15 +45,39 @@
         "generic-created-with-url": "{name} oluşturuldu, {url}",
         "generic-updated-with-url": "{name} güncellendi, {url}",
         "generic-duplicated": "{name} yinelendi",
-        "generic-deleted": "{name} silindi"
+        "generic-deleted": "{name} silindi",
+        "logged-out": "Logged out"
     },
     "datetime": {
-        "year": "yıl|yıllar",
-        "day": "gün|günler",
-        "hour": "saat|saatler",
-        "minute": "dakika|dakikalar",
-        "second": "saniye|saniyeler",
-        "millisecond": "milisaniye|milisaniyeler",
-        "microsecond": "mikrosaniye|mikrosaniyeler"
+        "year": "yıl|yıl",
+        "day": "gün|gün",
+        "hour": "saat|saat",
+        "minute": "dakika|dakika",
+        "second": "saniye|saniye",
+        "millisecond": "milisaniye|milisaniye",
+        "microsecond": "mikrosaniye|mikrosaniye"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie Şifremi Unuttum",
+            "header_text": "Şifremi Unuttum",
+            "message_top": "Şifre yenileme talebinde bulundunuz.",
+            "message_bottom": "Şifrenizi sıfırlamak için lütfen yukarıdaki butona tıklayın.",
+            "button_text": "Şifreyi Sıfırla"
+        },
+        "invitation": {
+            "subject": "Mealie'ye Katılım Daveti",
+            "header_text": "Davet Edildiniz!",
+            "message_top": "Mealie'ye katılmaya davet edildiniz.",
+            "message_bottom": "Daveti kabul etmek için lütfen yukarıdaki butona tıklayın.",
+            "button_text": "Daveti Kabul Et"
+        },
+        "test": {
+            "subject": "Mealie Deneme E-Postası",
+            "header_text": "Deneme E-Postası",
+            "message_top": "Bu bir test e-postasıdır.",
+            "message_bottom": "E-postayı test etmek için lütfen yukarıdaki butona tıklayın.",
+            "button_text": "Mealie'yi Aç"
+        }
     }
 }

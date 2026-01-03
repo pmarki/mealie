@@ -1,12 +1,40 @@
-import { useAsync, useRouter, ref } from "@nuxtjs/composition-api";
+import { ref } from "vue";
 import { useAsyncKey } from "../use-utils";
 import { usePublicExploreApi } from "~/composables/api/api-client";
 import { useUserApi } from "~/composables/api";
-import { Recipe } from "~/lib/api/types/recipe";
-import { RecipeSearchQuery } from "~/lib/api/user/recipes/recipe";
+import type { OrderByNullPosition, Recipe } from "~/lib/api/types/recipe";
+import type { RecipeSearchQuery } from "~/lib/api/user/recipes/recipe";
 
 export const allRecipes = ref<Recipe[]>([]);
 export const recentRecipes = ref<Recipe[]>([]);
+
+function getParams(
+  orderBy: string | null = null,
+  orderDirection = "desc",
+  orderByNullPosition: OrderByNullPosition | null = null,
+  query: RecipeSearchQuery | null = null,
+  queryFilter: string | null = null,
+) {
+  return {
+    orderBy,
+    orderDirection,
+    orderByNullPosition,
+    paginationSeed: query?._searchSeed, // propagate searchSeed to stabilize random order pagination
+    searchSeed: query?._searchSeed, // unused, but pass it along for completeness of data
+    search: query?.search,
+    cookbook: query?.cookbook,
+    households: query?.households,
+    categories: query?.categories,
+    requireAllCategories: query?.requireAllCategories,
+    tags: query?.tags,
+    requireAllTags: query?.requireAllTags,
+    tools: query?.tools,
+    requireAllTools: query?.requireAllTools,
+    foods: query?.foods,
+    requireAllFoods: query?.requireAllFoods,
+    queryFilter,
+  };
+};
 
 export const useLazyRecipes = function (publicGroupSlug: string | null = null) {
   const router = useRouter();
@@ -21,27 +49,15 @@ export const useLazyRecipes = function (publicGroupSlug: string | null = null) {
     perPage: number,
     orderBy: string | null = null,
     orderDirection = "desc",
+    orderByNullPosition: OrderByNullPosition | null = null,
     query: RecipeSearchQuery | null = null,
     queryFilter: string | null = null,
   ) {
-
-    const { data, error } = await api.recipes.getAll(page, perPage, {
-      orderBy,
-      orderDirection,
-      paginationSeed: query?._searchSeed, // propagate searchSeed to stabilize random order pagination
-      searchSeed: query?._searchSeed, // unused, but pass it along for completeness of data
-      search: query?.search,
-      cookbook: query?.cookbook,
-      categories: query?.categories,
-      requireAllCategories: query?.requireAllCategories,
-      tags: query?.tags,
-      requireAllTags: query?.requireAllTags,
-      tools: query?.tools,
-      requireAllTools: query?.requireAllTools,
-      foods: query?.foods,
-      requireAllFoods: query?.requireAllFoods,
-      queryFilter,
-    });
+    const { data, error } = await api.recipes.getAll(
+      page,
+      perPage,
+      getParams(orderBy, orderDirection, orderByNullPosition, query, queryFilter),
+    );
 
     if (error?.response?.status === 404) {
       router.push("/login");
@@ -73,6 +89,15 @@ export const useLazyRecipes = function (publicGroupSlug: string | null = null) {
     recipes.value = val;
   }
 
+  async function getRandom(query: RecipeSearchQuery | null = null, queryFilter: string | null = null) {
+    query = query || {};
+    query._searchSeed = query._searchSeed || Date.now().toString();
+    const { data } = await api.recipes.getAll(1, 1, getParams("random", "desc", null, query, queryFilter));
+    if (data?.items.length) {
+      return data.items[0];
+    }
+  }
+
   return {
     recipes,
     fetchMore,
@@ -80,13 +105,16 @@ export const useLazyRecipes = function (publicGroupSlug: string | null = null) {
     assignSorted,
     removeRecipe,
     replaceRecipes,
+    getRandom,
   };
 };
 
 export const useRecipes = (
-  all = false, fetchRecipes = true,
+  all = false,
+  fetchRecipes = true,
   loadFood = false,
-  publicGroupSlug: string | null = null
+  queryFilter: string | null = null,
+  publicGroupSlug: string | null = null,
 ) => {
   const api = publicGroupSlug ? usePublicExploreApi(publicGroupSlug).explore : useUserApi();
 
@@ -98,7 +126,8 @@ export const useRecipes = (
         page: 1,
         perPage: -1,
       };
-    } else {
+    }
+    else {
       return {
         recipes: recentRecipes,
         page: 1,
@@ -108,16 +137,16 @@ export const useRecipes = (
   })();
 
   async function refreshRecipes() {
-    const { data } = await api.recipes.getAll(page, perPage, { loadFood, orderBy: "created_at" });
+    const { data } = await api.recipes.getAll(page, perPage, { loadFood, orderBy: "created_at", queryFilter });
     if (data) {
       recipes.value = data.items;
     }
   }
 
   function getAllRecipes() {
-    useAsync(async () => {
+    useAsyncData(useAsyncKey(), async () => {
       await refreshRecipes();
-    }, useAsyncKey());
+    });
   }
 
   function assignSorted(val: Array<Recipe>) {

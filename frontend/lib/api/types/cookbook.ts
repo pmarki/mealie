@@ -1,130 +1,68 @@
 /* tslint:disable */
-/* eslint-disable */
+
 /**
 /* This file was automatically generated from pydantic models by running pydantic2ts.
 /* Do not modify it by hand - just update the pydantic models and then re-run the script
 */
 
+export type LogicalOperator = "AND" | "OR";
+export type RelationalKeyword = "IS" | "IS NOT" | "IN" | "NOT IN" | "CONTAINS ALL" | "LIKE" | "NOT LIKE";
+export type RelationalOperator = "=" | "<>" | ">" | "<" | ">=" | "<=";
+
+export interface CookbookHousehold {
+  id: string;
+  name: string;
+}
 export interface CreateCookBook {
   name: string;
   description?: string;
-  slug?: string;
+  slug?: string | null;
   position?: number;
   public?: boolean;
-  categories?: CategoryBase[];
-  tags?: TagBase[];
-  tools?: RecipeTool[];
-  requireAllCategories?: boolean;
-  requireAllTags?: boolean;
-  requireAllTools?: boolean;
-}
-export interface CategoryBase {
-  name: string;
-  id: string;
-  slug: string;
-}
-export interface TagBase {
-  name: string;
-  id: string;
-  slug: string;
-}
-export interface RecipeTool {
-  id: string;
-  name: string;
-  slug: string;
-  onHand?: boolean;
+  queryFilterString?: string;
 }
 export interface ReadCookBook {
   name: string;
   description?: string;
-  slug?: string;
+  slug?: string | null;
   position?: number;
   public?: boolean;
-  categories?: CategoryBase[];
-  tags?: TagBase[];
-  tools?: RecipeTool[];
-  requireAllCategories?: boolean;
-  requireAllTags?: boolean;
-  requireAllTools?: boolean;
+  queryFilterString?: string;
   groupId: string;
+  householdId: string;
   id: string;
+  queryFilter?: QueryFilterJSON;
+  household?: CookbookHousehold | null;
 }
-export interface RecipeCookBook {
-  name: string;
-  description?: string;
-  slug?: string;
-  position?: number;
-  public?: boolean;
-  categories?: CategoryBase[];
-  tags?: TagBase[];
-  tools?: RecipeTool[];
-  requireAllCategories?: boolean;
-  requireAllTags?: boolean;
-  requireAllTools?: boolean;
-  groupId: string;
-  id: string;
-  recipes: RecipeSummary[];
+export interface QueryFilterJSON {
+  parts?: QueryFilterJSONPart[];
 }
-export interface RecipeSummary {
-  id?: string;
-  userId?: string;
-  groupId?: string;
-  name?: string;
-  slug?: string;
-  image?: unknown;
-  recipeYield?: string;
-  totalTime?: string;
-  prepTime?: string;
-  cookTime?: string;
-  performTime?: string;
-  description?: string;
-  recipeCategory?: RecipeCategory[];
-  tags?: RecipeTag[];
-  tools?: RecipeTool[];
-  rating?: number;
-  orgURL?: string;
-  dateAdded?: string;
-  dateUpdated?: string;
-  createdAt?: string;
-  updateAt?: string;
-  lastMade?: string;
-}
-export interface RecipeCategory {
-  id?: string;
-  name: string;
-  slug: string;
-}
-export interface RecipeTag {
-  id?: string;
-  name: string;
-  slug: string;
+export interface QueryFilterJSONPart {
+  leftParenthesis?: string | null;
+  rightParenthesis?: string | null;
+  logicalOperator?: LogicalOperator | null;
+  attributeName?: string | null;
+  relationalOperator?: RelationalKeyword | RelationalOperator | null;
+  value?: string | string[] | null;
 }
 export interface SaveCookBook {
   name: string;
   description?: string;
-  slug?: string;
+  slug?: string | null;
   position?: number;
   public?: boolean;
-  categories?: CategoryBase[];
-  tags?: TagBase[];
-  tools?: RecipeTool[];
-  requireAllCategories?: boolean;
-  requireAllTags?: boolean;
-  requireAllTools?: boolean;
+  queryFilterString?: string;
   groupId: string;
+  householdId: string;
 }
 export interface UpdateCookBook {
   name: string;
   description?: string;
-  slug?: string;
+  slug?: string | null;
   position?: number;
   public?: boolean;
-  categories?: CategoryBase[];
-  tags?: TagBase[];
-  tools?: RecipeTool[];
-  requireAllCategories?: boolean;
-  requireAllTags?: boolean;
-  requireAllTools?: boolean;
+  queryFilterString?: string;
   groupId: string;
+  householdId: string;
   id: string;
 }

@@ -2,6 +2,7 @@ import contextlib
 import functools
 import html
 import json
+import numbers
 import operator
 import re
 import typing
@@ -10,7 +11,9 @@ from datetime import datetime, timedelta
 from slugify import slugify
 
 from mealie.core.root_logger import get_logger
-from mealie.lang.providers import Translator
+from mealie.lang.providers import Translator, get_all_translations
+from mealie.schema.recipe.recipe import Recipe
+from mealie.services.parser_services.parser_utils import extract_quantity_from_string
 
 logger = get_logger("recipe-scraper")
 
@@ -33,42 +36,56 @@ MATCH_ERRONEOUS_WHITE_SPACE = re.compile(r"\n\s*\n")
 """ Matches multiple new lines and removes erroneous white space """
 
 
-def clean(recipe_data: dict, translator: Translator, url=None) -> dict:
+def clean(recipe_data: Recipe | dict, translator: Translator, url=None) -> Recipe:
     """Main entrypoint to clean a recipe extracted from the web
     and format the data into an accectable format for the database
 
     Args:
-        recipe_data (dict): raw recipe dicitonary
+        recipe_data (dict): raw recipe or recipe dictionary
 
     Returns:
         dict: cleaned recipe dictionary
     """
+    if not isinstance(recipe_data, dict):
+        # format the recipe like a scraped dictionary
+        recipe_data_dict = recipe_data.model_dump(by_alias=True)
+        recipe_data_dict["recipeIngredient"] = [ing.display for ing in recipe_data.recipe_ingredient]
+
+        recipe_data = recipe_data_dict
+
+    recipe_data["slug"] = slugify(recipe_data.get("name", ""))
     recipe_data["description"] = clean_string(recipe_data.get("description", ""))
 
-    # Times
     recipe_data["prepTime"] = clean_time(recipe_data.get("prepTime"), translator)
     recipe_data["performTime"] = clean_time(recipe_data.get("performTime"), translator)
     recipe_data["totalTime"] = clean_time(recipe_data.get("totalTime"), translator)
+
+    recipe_data["recipeServings"], recipe_data["recipeYieldQuantity"], recipe_data["recipeYield"] = clean_yield(
+        recipe_data.get("recipeYield")
+    )
     recipe_data["recipeCategory"] = clean_categories(recipe_data.get("recipeCategory", []))
-    recipe_data["recipeYield"] = clean_yield(recipe_data.get("recipeYield"))
     recipe_data["recipeIngredient"] = clean_ingredients(recipe_data.get("recipeIngredient", []))
     recipe_data["recipeInstructions"] = clean_instructions(recipe_data.get("recipeInstructions", []))
+
     recipe_data["image"] = clean_image(recipe_data.get("image"))[0]
-    recipe_data["slug"] = slugify(recipe_data.get("name", ""))
     recipe_data["orgURL"] = url or recipe_data.get("orgURL")
     recipe_data["notes"] = clean_notes(recipe_data.get("notes"))
     recipe_data["rating"] = clean_int(recipe_data.get("rating"))
 
-    return recipe_data
+    return Recipe(**recipe_data)
 
 
-def clean_string(text: str | list | int) -> str:
+def clean_string(text: str | list | int | float) -> str:
     """Cleans a string of HTML tags and extra white space"""
     if not isinstance(text, str):
         if isinstance(text, list):
-            text = text[0]
-
-        if isinstance(text, int):
+            if text:
+                return clean_string(text[0])
+            else:
+                text = ""
+        elif text is None:
+            text = ""
+        else:
             text = str(text)
 
     if not text:
@@ -108,13 +125,14 @@ def clean_image(image: str | list | dict | None = None, default: str = "no image
         case str(image):
             return [image]
         case [str(_), *_]:
-            return [x for x in image if x]  # Only return non-null strings in list
+            # Only return non-null strings in list
+            return [x for x in image if x]
         case [{"url": str(_)}, *_]:
-            return [x["url"] for x in image]
+            return [x["url"] for x in image if "url" in x]
         case {"url": str(image)}:
             return [image]
         case [{"@id": str(_)}, *_]:
-            return [x["@id"] for x in image]
+            return [x["@id"] for x in image if "@id" in x]
         case _:
             logger.exception(f"Unexpected type for image: {type(image)}, {image}")
             return [default]
@@ -149,7 +167,7 @@ def clean_instructions(steps_object: list | dict | str, default: list | None = N
             return [
                 {"text": _sanitize_instruction_text(instruction["text"])}
                 for instruction in steps_object
-                if instruction["text"].strip()
+                if "text" in instruction and instruction["text"].strip()
             ]
         case {0: {"text": str()}} | {"0": {"text": str()}} | {1: {"text": str()}} | {"1": {"text": str()}}:
             # Some recipes have a dict with a string key representing the index, unsure if these can
@@ -162,7 +180,7 @@ def clean_instructions(steps_object: list | dict | str, default: list | None = N
             # }
             #
             steps_object = typing.cast(dict, steps_object)
-            return clean_instructions([x for x in steps_object.values()])
+            return clean_instructions(list(steps_object.values()))
         case str(step_as_str):
             # Strings are weird, some sites return a single string with newlines
             # others returns a json string for some reasons
@@ -316,7 +334,31 @@ def clean_notes(notes: typing.Any) -> list[dict] | None:
     return parsed_notes
 
 
-def clean_yield(yld: str | list[str] | None) -> str:
+@functools.lru_cache
+def _get_servings_options() -> set[str]:
+    options: set[str] = set()
+    for key in [
+        "recipe.servings-text.makes",
+        "recipe.servings-text.serves",
+        "recipe.servings-text.serving",
+        "recipe.servings-text.servings",
+        "recipe.servings-text.yield",
+        "recipe.servings-text.yields",
+    ]:
+        options.update([t.strip().lower() for t in get_all_translations(key).values()])
+
+    return options
+
+
+def _is_serving_string(txt: str) -> bool:
+    txt = txt.strip().lower()
+    for option in _get_servings_options():
+        if option in txt.strip().lower():
+            return True
+    return False
+
+
+def clean_yield(yields: str | list[str] | None) -> tuple[float, float, str]:
     """
     yield_amount attemps to parse out the yield amount from a recipe.
 
@@ -325,18 +367,37 @@ def clean_yield(yld: str | list[str] | None) -> str:
         - `["4 servings", "4 Pies"]` - returns the last value
 
     Returns:
+        float: The servings, if it can be parsed else 0
+        float: The yield quantity, if it can be parsed else 0
         str: The yield amount, if it can be parsed else an empty string
     """
-    if not yld:
-        return ""
+    servings_qty: float = 0
+    yld_qty: float = 0
+    yld_str = ""
 
-    if isinstance(yld, list):
-        return yld[-1]
+    if not yields:
+        return servings_qty, yld_qty, yld_str
 
-    return yld
+    if not isinstance(yields, list):
+        yields = [yields]
+
+    for yld in yields:
+        if not yld:
+            continue
+        if not isinstance(yld, str):
+            yld = str(yld)
+
+        qty, txt = extract_quantity_from_string(yld)
+        if qty and _is_serving_string(yld):
+            servings_qty = qty
+        else:
+            yld_qty = qty
+            yld_str = txt
+
+    return servings_qty, yld_qty, yld_str
 
 
-def clean_time(time_entry: str | timedelta | None, translator: Translator) -> None | str:
+def clean_time(time_entry: str | timedelta | int | float | None, translator: Translator) -> None | str:
     """_summary_
 
     Supported Structures:
@@ -345,6 +406,7 @@ def clean_time(time_entry: str | timedelta | None, translator: Translator) -> No
         - `"PT1H30M"` - returns "1 hour 30 minutes"
         - `timedelta(hours=1, minutes=30)` - returns "1 hour 30 minutes"
         - `{"minValue": "PT1H30M"}` - returns "1 hour 30 minutes"
+        - `30` - as a `int` or `float` assumed to be in minutes, returns "30 minutes"
 
     Raises:
         TypeError: if the type is not supported a TypeError is raised
@@ -356,6 +418,10 @@ def clean_time(time_entry: str | timedelta | None, translator: Translator) -> No
         return None
 
     match time_entry:
+        case numbers.Number():
+            # type checked by case statement
+            time_delta = timedelta(minutes=time_entry)  # type: ignore
+            return pretty_print_timedelta(time_delta, translator)
         case str(time_entry):
             if not time_entry.strip():
                 return None
@@ -368,14 +434,16 @@ def clean_time(time_entry: str | timedelta | None, translator: Translator) -> No
         case timedelta():
             return pretty_print_timedelta(time_entry, translator)
         case {"minValue": str(value)}:
-            return clean_time(value)
+            return clean_time(value, translator)
         case [str(), *_]:
-            return clean_time(time_entry[0])
+            return clean_time(time_entry[0], translator)
         case datetime():
             # TODO: Not sure what to do here
             return str(time_entry)
         case _:
-            logger.warning("[SCRAPER] Unexpected type or structure for variable time_entry")
+            logger.warning(
+                "[SCRAPER] Unexpected type(%s) or structure for variable time_entry: %s", type(time_entry), time_entry
+            )
             return None
 
 
@@ -481,7 +549,7 @@ def clean_tags(data: str | list[str]) -> list[str]:
         case [str(), *_]:
             return [tag.strip().title() for tag in data if tag.strip()]
         case str(data):
-            return clean_tags([t for t in data.split(",")])
+            return clean_tags(data.split(","))
         case _:
             return []
             # should probably raise exception
@@ -495,7 +563,7 @@ def clean_nutrition(nutrition: dict | None) -> dict[str, str]:
     list of valid keys
 
     Assumptionas:
-        - All units are supplied in grams, expect sodium which maybe be in milligrams
+        - All units are supplied in grams, expect sodium and cholesterol which maybe be in milligrams
 
     Returns:
         dict[str, str]: If the argument is None, or not a dictionary, an empty dictionary is returned
@@ -509,9 +577,16 @@ def clean_nutrition(nutrition: dict | None) -> dict[str, str]:
             if matched_digits := MATCH_DIGITS.search(val):
                 output_nutrition[key] = matched_digits.group(0).replace(",", ".")
 
-    if sodium := nutrition.get("sodiumContent", None):
-        if isinstance(sodium, str) and "m" not in sodium and "g" in sodium:
-            with contextlib.suppress(AttributeError, TypeError):
-                output_nutrition["sodiumContent"] = str(float(output_nutrition["sodiumContent"]) * 1000)
+    for key in ["sodiumContent", "cholesterolContent"]:
+        if val := nutrition.get(key, None):
+            if isinstance(val, str) and "m" not in val and "g" in val:
+                with contextlib.suppress(AttributeError, TypeError):
+                    output_nutrition[key] = str(float(output_nutrition[key]) * 1000)
+
+    for key in ["calories"]:
+        if val := nutrition.get(key, None):
+            if isinstance(val, int | float):
+                with contextlib.suppress(AttributeError, TypeError):
+                    output_nutrition[key] = str(val)
 
     return output_nutrition

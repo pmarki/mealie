@@ -1,27 +1,29 @@
-import { useAsync, ref, Ref, watch, useContext } from "@nuxtjs/composition-api";
 import { format } from "date-fns";
 import { useAsyncKey } from "./use-utils";
 import { useUserApi } from "~/composables/api";
-import { CreatePlanEntry, PlanEntryType, UpdatePlanEntry } from "~/lib/api/types/meal-plan";
+import type { CreatePlanEntry, PlanEntryType, UpdatePlanEntry } from "~/lib/api/types/meal-plan";
 
 type PlanOption = {
   text: string;
   value: PlanEntryType;
 };
 export function usePlanTypeOptions() {
-  const { i18n } = useContext();
+  const i18n = useI18n();
 
   return [
-    { text: i18n.tc("meal-plan.breakfast"), value: "breakfast" },
-    { text: i18n.tc("meal-plan.lunch"), value: "lunch" },
-    { text: i18n.tc("meal-plan.dinner"), value: "dinner" },
-    { text: i18n.tc("meal-plan.side"), value: "side" },
+    { text: i18n.t("meal-plan.breakfast"), value: "breakfast" },
+    { text: i18n.t("meal-plan.lunch"), value: "lunch" },
+    { text: i18n.t("meal-plan.dinner"), value: "dinner" },
+    { text: i18n.t("meal-plan.side"), value: "side" },
+    { text: i18n.t("meal-plan.snack"), value: "snack" },
+    { text: i18n.t("meal-plan.drink"), value: "drink" },
+    { text: i18n.t("meal-plan.dessert"), value: "dessert" },
   ] as PlanOption[];
 }
 
 export function getEntryTypeText(value: PlanEntryType) {
-  const { i18n } = useContext();
-  return i18n.tc("meal-plan." + value);
+  const i18n = useI18n();
+  return i18n.t("meal-plan." + value);
 }
 export interface DateRange {
   start: Date;
@@ -36,7 +38,7 @@ export const useMealplans = function (range: Ref<DateRange>) {
   const actions = {
     getAll() {
       loading.value = true;
-      const units = useAsync(async () => {
+      const { data: units } = useAsyncData(useAsyncKey(), async () => {
         const query = {
           start_date: format(range.value.start, "yyyy-MM-dd"),
           end_date: format(range.value.end, "yyyy-MM-dd"),
@@ -45,15 +47,16 @@ export const useMealplans = function (range: Ref<DateRange>) {
 
         if (data) {
           return data.items;
-        } else {
+        }
+        else {
           return null;
         }
-      }, useAsyncKey());
+      });
 
       loading.value = false;
       return units;
     },
-    async refreshAll(this: void) {
+    async refreshAll() {
       loading.value = true;
       const query = {
         start_date: format(range.value.start, "yyyy-MM-dd"),

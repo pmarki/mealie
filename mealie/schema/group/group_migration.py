@@ -12,6 +12,8 @@ class SupportedMigrations(str, enum.Enum):
     tandoor = "tandoor"
     plantoeat = "plantoeat"
     myrecipebox = "myrecipebox"
+    recipekeeper = "recipekeeper"
+    cookn = "cookn"
 
 
 class DataMigrationCreate(MealieModel):

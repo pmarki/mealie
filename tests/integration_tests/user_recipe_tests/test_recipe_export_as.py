@@ -1,3 +1,7 @@
+import json
+import zipfile
+from io import BytesIO
+
 from fastapi.testclient import TestClient
 
 from tests.utils import api_routes
@@ -14,33 +18,29 @@ def test_get_available_exports(api_client: TestClient, unique_user: TestUser) ->
 
     as_json = response.json()
 
-    assert "recipes.md" in as_json["jinja2"]
     assert "raw" in as_json["json"]
 
 
-def test_render_jinja_template(api_client: TestClient, unique_user: TestUser) -> None:
+def test_get_recipe_as_zip(api_client: TestClient, unique_user: TestUser) -> None:
     # Create Recipe
     recipe_name = random_string()
     response = api_client.post(api_routes.recipes, json={"name": recipe_name}, headers=unique_user.token)
     assert response.status_code == 201
     slug = response.json()
 
-    # Render Template
-    response = api_client.get(
-        api_routes.recipes_slug_exports(slug) + "?template_name=recipes.md", headers=unique_user.token
-    )
+    # Get token
+    recipe = api_client.get(api_routes.recipes_slug(slug), headers=unique_user.token).json()
+    assert recipe["slug"] == slug
+    response = api_client.post(api_routes.shared_recipes, json={"recipeId": recipe["id"]}, headers=unique_user.token)
+    assert response.status_code == 201
+    token_id = response.json()["id"]
+
+    # Get zip file
+    response = api_client.get(api_routes.recipes_shared_token_id_zip(token_id))
     assert response.status_code == 200
 
-    # Assert Template is Rendered Correctly
-    # TODO: More robust test
-    assert f"# {recipe_name}" in response.text
-
-
-# TODO: Allow users to upload templates to their own directory
-# def test_upload_template(api_client: TestClient, unique_user: TestUser) -> None:
-#     assert False
-
-
-# # TODO: Allow users to upload templates to their own directory
-# def test_delete_template(api_client: TestClient, unique_user: TestUser) -> None:
-#     assert False
+    # Verify the zip
+    zip_file = BytesIO(response.content)
+    with zipfile.ZipFile(zip_file, "r") as zip_fp:
+        with zip_fp.open(f"{slug}.json") as json_fp:
+            assert json.loads(json_fp.read())["name"] == recipe_name

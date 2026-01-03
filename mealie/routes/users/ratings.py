@@ -1,8 +1,10 @@
+from functools import cached_property
 from uuid import UUID
 
 from fastapi import HTTPException, status
 from pydantic import UUID4
 
+from mealie.repos.all_repositories import get_repositories
 from mealie.routes._base import BaseUserController, controller
 from mealie.routes._base.routers import UserAPIRouter
 from mealie.routes.users._helpers import assert_user_change_allowed
@@ -14,6 +16,10 @@ router = UserAPIRouter()
 
 @controller(router)
 class UserRatingsController(BaseUserController):
+    @cached_property
+    def group_recipes(self):
+        return get_repositories(self.session, group_id=self.group_id, household_id=None).recipes
+
     def get_recipe_or_404(self, slug_or_id: str | UUID):
         """Fetches a recipe by slug or id, or raises a 404 error if not found."""
         if isinstance(slug_or_id, str):
@@ -22,11 +28,10 @@ class UserRatingsController(BaseUserController):
             except ValueError:
                 pass
 
-        recipes_repo = self.repos.recipes.by_group(self.group_id)
         if isinstance(slug_or_id, UUID):
-            recipe = recipes_repo.get_one(slug_or_id, key="id")
+            recipe = self.group_recipes.get_one(slug_or_id, key="id")
         else:
-            recipe = recipes_repo.get_one(slug_or_id, key="slug")
+            recipe = self.group_recipes.get_one(slug_or_id, key="slug")
 
         if not recipe:
             raise HTTPException(
@@ -49,7 +54,7 @@ class UserRatingsController(BaseUserController):
     @router.post("/{id}/ratings/{slug}")
     def set_rating(self, id: UUID4, slug: str, data: UserRatingUpdate):
         """Sets the user's rating for a recipe"""
-        assert_user_change_allowed(id, self.user)
+        assert_user_change_allowed(id, self.user, self.user)
 
         recipe = self.get_recipe_or_404(slug)
         user_rating = self.repos.user_ratings.get_by_user_and_recipe(id, recipe.id)

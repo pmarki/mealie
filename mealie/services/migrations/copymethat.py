@@ -1,6 +1,6 @@
 import tempfile
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from bs4 import BeautifulSoup
@@ -35,7 +35,7 @@ class CopyMeThatMigrator(BaseMigrator):
         self.name = "copymethat"
 
         self.key_aliases = [
-            MigrationAlias(key="last_made", alias="made_this", func=lambda x: datetime.now()),
+            MigrationAlias(key="last_made", alias="made_this", func=lambda x: datetime.now(UTC)),
             MigrationAlias(key="notes", alias="recipeNotes"),
             MigrationAlias(key="orgURL", alias="original_link"),
             MigrationAlias(key="rating", alias="ratingValue"),
@@ -86,7 +86,7 @@ class CopyMeThatMigrator(BaseMigrator):
             with zipfile.ZipFile(self.archive) as zip_file:
                 zip_file.extractall(tmpdir)
 
-            source_dir = Path(tmpdir)
+            source_dir = self.get_zip_base_path(Path(tmpdir))
 
             recipes_as_dicts: list[dict] = []
             for recipes_data_file in source_dir.glob("*.html"):

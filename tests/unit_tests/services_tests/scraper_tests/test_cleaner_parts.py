@@ -62,6 +62,36 @@ clean_string_test_cases = (
         input=1,
         expected="1",
     ),
+    CleanerCase(
+        test_id="float",
+        input=1.5,
+        expected="1.5",
+    ),
+    CleanerCase(
+        test_id="none",
+        input=None,
+        expected="",
+    ),
+    CleanerCase(
+        test_id="list empty",
+        input=[],
+        expected="",
+    ),
+    CleanerCase(
+        test_id="list none",
+        input=[None],
+        expected="",
+    ),
+    CleanerCase(
+        test_id="list multiple none",
+        input=[None, None],
+        expected="",
+    ),
+    CleanerCase(
+        test_id="unexpected type",
+        input={"key": "value"},
+        expected="{'key': 'value'}",
+    ),
 )
 
 
@@ -275,22 +305,102 @@ yield_test_cases = (
     CleanerCase(
         test_id="empty string",
         input="",
-        expected="",
+        expected=(0, 0, ""),
+    ),
+    CleanerCase(
+        test_id="regular string",
+        input="4 Batches",
+        expected=(0, 4, "Batches"),
+    ),
+    CleanerCase(
+        test_id="regular serving string",
+        input="4 Servings",
+        expected=(4, 0, ""),
+    ),
+    CleanerCase(
+        test_id="regular string with whitespace",
+        input="4   Batches    ",
+        expected=(0, 4, "Batches"),
+    ),
+    CleanerCase(
+        test_id="regular serving string with whitespace",
+        input="4   Servings    ",
+        expected=(4, 0, ""),
     ),
     CleanerCase(
         test_id="list of strings",
-        input=["Makes 4 Batches", "4 Batches"],
-        expected="4 Batches",
+        input=["Serves 2", "4 Batches", "5 Batches"],
+        expected=(2, 5, "Batches"),
     ),
     CleanerCase(
         test_id="basic string",
+        input="Makes a lot of Batches",
+        expected=(0, 0, "Makes a lot of Batches"),
+    ),
+    CleanerCase(
+        test_id="basic serving string",
         input="Makes 4 Batches",
-        expected="Makes 4 Batches",
+        expected=(4, 0, ""),
     ),
     CleanerCase(
         test_id="empty list",
         input=[],
-        expected="",
+        expected=(0, 0, ""),
+    ),
+    CleanerCase(
+        test_id="basic fraction",
+        input="1/2 Batches",
+        expected=(0, 0.5, "Batches"),
+    ),
+    CleanerCase(
+        test_id="mixed fraction",
+        input="1 1/2 Batches",
+        expected=(0, 1.5, "Batches"),
+    ),
+    CleanerCase(
+        test_id="improper fraction",
+        input="11/2 Batches",
+        expected=(0, 5.5, "Batches"),
+    ),
+    CleanerCase(
+        test_id="vulgar fraction",
+        input="¾ Batches",
+        expected=(0, 0.75, "Batches"),
+    ),
+    CleanerCase(
+        test_id="mixed vulgar fraction",
+        input="2¾ Batches",
+        expected=(0, 2.75, "Batches"),
+    ),
+    CleanerCase(
+        test_id="mixed vulgar fraction with space",
+        input="2 ¾ Batches",
+        expected=(0, 2.75, "Batches"),
+    ),
+    CleanerCase(
+        test_id="basic decimal",
+        input="0.5 Batches",
+        expected=(0, 0.5, "Batches"),
+    ),
+    CleanerCase(
+        test_id="text with numbers",
+        input="6 Batches or 10 Batches",
+        expected=(0, 6, "Batches or 10 Batches"),
+    ),
+    CleanerCase(
+        test_id="no qty",
+        input="A Lot of Servings",
+        expected=(0, 0, "A Lot of Servings"),
+    ),
+    CleanerCase(
+        test_id="invalid qty",
+        input="1/0 Batches",
+        expected=(0, 0, "1/0 Batches"),
+    ),
+    CleanerCase(
+        test_id="int as float",
+        input="3.0 Batches",
+        expected=(0, 3, "Batches"),
     ),
 )
 
@@ -458,6 +568,24 @@ nutrition_test_cases = (
         },
     ),
     CleanerCase(
+        test_id="calories as int",
+        input={
+            "calories": 100,
+        },
+        expected={
+            "calories": "100",
+        },
+    ),
+    CleanerCase(
+        test_id="calories as float",
+        input={
+            "calories": 100.0,
+        },
+        expected={
+            "calories": "100.0",
+        },
+    ),
+    CleanerCase(
         test_id="invalid keys get removed",
         input={
             "calories": "100mg",
@@ -481,20 +609,24 @@ nutrition_test_cases = (
         },
     ),
     CleanerCase(
-        test_id="special support for sodiumContent (g -> mg)",
+        test_id="special support for sodiumContent/cholesterolContent (g -> mg)",
         input={
+            "cholesterolContent": "10g",
             "sodiumContent": "10g",
         },
         expected={
+            "cholesterolContent": "10000.0",
             "sodiumContent": "10000.0",
         },
     ),
     CleanerCase(
-        test_id="special support for sodiumContent (mg -> mg)",
+        test_id="special support for sodiumContent/cholesterolContent (mg -> mg)",
         input={
+            "cholesterolContent": "10000mg",
             "sodiumContent": "10000mg",
         },
         expected={
+            "cholesterolContent": "10000",
             "sodiumContent": "10000",
         },
     ),

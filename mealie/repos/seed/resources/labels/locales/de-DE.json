@@ -1,6 +1,6 @@
 [
     {
-        "name": "Produkte"
+        "name": "Obst & Gemüse"
     },
     {
         "name": "Getreide"
@@ -27,10 +27,10 @@
         "name": "Konserven"
     },
     {
-        "name": "Gewürz"
+        "name": "Gewürze"
     },
     {
-        "name": "Konditorwaren"
+        "name": "Süßwaren"
     },
     {
         "name": "Milchprodukte"
@@ -39,7 +39,7 @@
         "name": "Tiefkühlware"
     },
     {
-        "name": "Reformkost"
+        "name": "Bio-Lebensmittel"
     },
     {
         "name": "Haushalt"

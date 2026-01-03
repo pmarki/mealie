@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Opskriftsnavnet er allerede i brug",
+        "recipe-created": "Opskrift oprettet",
+        "recipe-image-deleted": "Opskrift billede slettet",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "1 kop mel",
+            "step-text": "Du kan bruge markdown kode i beskrivelser og andre felter i opskrifter.\n\n**Tilføj et link**\n\n[Mit link](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Udgør",
+            "serves": "Portioner",
+            "serving": "Servering",
+            "servings": "Portioner",
+            "yield": "Portioner",
+            "yields": "Portioner"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Du har ikke tilladelse til at udføre denne handling",
+        "recursive-recipe-link": "En opskrift kan ikke henvise til sig selv, hverken direkte eller indirekte",
         "no-entry-found": "Siden kunne ikke findes",
         "integrity-error": "Databaseintegritetsfejl",
         "username-conflict-error": "Dette brugernavn er allerede i brug",
@@ -33,8 +44,9 @@
         "generic-updated": "{name} blev opdateret",
         "generic-created-with-url": "{name} er oprettet, {url}",
         "generic-updated-with-url": "{name} er blevet opdateret, {url}",
-        "generic-duplicated": "{name} er blevet dublikeret",
-        "generic-deleted": "{name} er blevet slettet"
+        "generic-duplicated": "{name} er blevet duplikeret",
+        "generic-deleted": "{name} er blevet slettet",
+        "logged-out": "Logget ud"
     },
     "datetime": {
         "year": "år|år",
@@ -44,5 +56,28 @@
         "second": "sekund|sekunder",
         "millisecond": "millisekund|millisekunder",
         "microsecond": "mikrosekund|mikrosekunder"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie glemt adgangskode",
+            "header_text": "Glemt adgangskode",
+            "message_top": "Du har anmodet om at nulstille din adgangskode.",
+            "message_bottom": "Klik på knappen ovenfor for at nulstille din adgangskode.",
+            "button_text": "Nulstil adgangskode"
+        },
+        "invitation": {
+            "subject": "Invitation til at deltage i Mealie",
+            "header_text": "Du er Inviteret!",
+            "message_top": "Du er blevet inviteret til Mealie.",
+            "message_bottom": "Klik på knappen ovenfor for at acceptere invitationen.",
+            "button_text": "Acceptér invitation"
+        },
+        "test": {
+            "subject": "E-mail-test fra Mealie",
+            "header_text": "Test E-mail",
+            "message_top": "Dette er en test e-mail.",
+            "message_bottom": "Klik på knappen ovenfor for at teste e-mailen.",
+            "button_text": "Åbn Mealie"
+        }
     }
 }

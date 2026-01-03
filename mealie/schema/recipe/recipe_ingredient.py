@@ -7,12 +7,14 @@ from typing import ClassVar
 from uuid import UUID, uuid4
 
 from pydantic import UUID4, ConfigDict, Field, field_validator, model_validator
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
 from mealie.db.models.recipe import IngredientFoodModel
 from mealie.schema._mealie import MealieModel
+from mealie.schema._mealie.mealie_model import UpdatedAtField
 from mealie.schema._mealie.types import NoneFloat
+from mealie.schema.recipe.recipe import Recipe
 from mealie.schema.response.pagination import PaginationBase
 
 INGREDIENT_QTY_PRECISION = 3
@@ -65,6 +67,7 @@ class IngredientFoodAlias(CreateIngredientFoodAlias):
 class CreateIngredientFood(UnitFoodBase):
     label_id: UUID4 | None = None
     aliases: list[CreateIngredientFoodAlias] = []
+    households_with_ingredient_food: list[str] = []
 
 
 class SaveIngredientFood(CreateIngredientFood):
@@ -77,15 +80,35 @@ class IngredientFood(CreateIngredientFood):
     aliases: list[IngredientFoodAlias] = []
 
     created_at: datetime.datetime | None = None
-    update_at: datetime.datetime | None = None
+    updated_at: datetime.datetime | None = UpdatedAtField(None)
 
-    _searchable_properties: ClassVar[list[str]] = ["name_normalized", "plural_name_normalized"]
+    _searchable_properties: ClassVar[list[str]] = [
+        "name_normalized",
+        "plural_name_normalized",
+    ]
     _normalize_search: ClassVar[bool] = True
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def loader_options(cls) -> list[LoaderOption]:
-        return [joinedload(IngredientFoodModel.extras), joinedload(IngredientFoodModel.label)]
+        return [
+            selectinload(IngredientFoodModel.households_with_ingredient_food),
+            joinedload(IngredientFoodModel.extras),
+            joinedload(IngredientFoodModel.label),
+        ]
+
+    @field_validator("households_with_ingredient_food", mode="before")
+    def convert_households_to_slugs(cls, v):
+        if not v:
+            return []
+
+        try:
+            return [household.slug for household in v]
+        except AttributeError:
+            return v
+
+    def is_on_hand(self, household_slug: str) -> bool:
+        return household_slug in self.households_with_tool
 
 
 class IngredientFoodPagination(PaginationBase):
@@ -117,7 +140,7 @@ class IngredientUnit(CreateIngredientUnit):
     aliases: list[IngredientUnitAlias] = []
 
     created_at: datetime.datetime | None = None
-    update_at: datetime.datetime | None = None
+    updated_at: datetime.datetime | None = UpdatedAtField(None)
 
     _searchable_properties: ClassVar[list[str]] = [
         "name_normalized",
@@ -130,33 +153,18 @@ class IngredientUnit(CreateIngredientUnit):
 
 
 class RecipeIngredientBase(MealieModel):
-    quantity: NoneFloat = 1
+    quantity: NoneFloat = 0
     unit: IngredientUnit | CreateIngredientUnit | None = None
     food: IngredientFood | CreateIngredientFood | None = None
-    note: str | None = ""
+    referenced_recipe: Recipe | None = None
 
-    is_food: bool | None = None
-    disable_amount: bool | None = None
+    note: str | None = ""
     display: str = ""
     """
     How the ingredient should be displayed
 
     Automatically calculated after the object is created, unless overwritten
     """
-
-    @model_validator(mode="after")
-    def calculate_missing_food_flags(self):
-        # calculate missing is_food and disable_amount values
-        # we can't do this in a validator since they depend on each other
-        if self.is_food is None and self.disable_amount is not None:
-            self.is_food = not self.disable_amount
-        elif self.disable_amount is None and self.is_food is not None:
-            self.disable_amount = not self.is_food
-        elif self.is_food is None and self.disable_amount is None:
-            self.is_food = bool(self.food)
-            self.disable_amount = not self.is_food
-
-        return self
 
     @model_validator(mode="after")
     def format_display(self):
@@ -244,28 +252,17 @@ class RecipeIngredientBase(MealieModel):
     def _format_display(self) -> str:
         components = []
 
-        use_food = True
-        if self.is_food is False:
-            use_food = False
-        elif self.disable_amount is True:
-            use_food = False
-
-        # ingredients with no food come across with a qty of 1, which looks weird
-        # e.g. "1 2 tbsp of olive oil"
-        if self.quantity and (use_food or self.quantity != 1):
+        if self.quantity:
             components.append(self._format_quantity_for_display())
 
-        if not use_food:
-            components.append(self.note or "")
-        else:
-            if self.quantity and self.unit:
-                components.append(self._format_unit_for_display())
+        if self.quantity and self.unit:
+            components.append(self._format_unit_for_display())
 
-            if self.food:
-                components.append(self._format_food_for_display())
+        if self.food:
+            components.append(self._format_food_for_display())
 
-            if self.note:
-                components.append(self.note)
+        if self.note:
+            components.append(self.note)
 
         return " ".join(components).strip()
 
@@ -277,7 +274,6 @@ class IngredientUnitPagination(PaginationBase):
 class RecipeIngredient(RecipeIngredientBase):
     title: str | None = None
     original_text: str | None = None
-    disable_amount: bool = True
 
     # Ref is used as a way to distinguish between an individual ingredient on the frontend
     # It is required for the reorder and section titles to function properly because of how
@@ -327,6 +323,7 @@ class ParsedIngredient(MealieModel):
 class RegisteredParser(str, enum.Enum):
     nlp = "nlp"
     brute = "brute"
+    openai = "openai"
 
 
 class IngredientsRequest(MealieModel):

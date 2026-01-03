@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Os nomes de receitas devem ser únicos",
+        "recipe-created": "Receita criada",
+        "recipe-image-deleted": "Imagem da receita eliminada",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "1 Chávena de Farinha",
+            "step-text": "Os passos da receita, bem como outros campos na página da receita, suportam a sintaxe markdown.\n\n**Adicionar um link**\n\n[Meu link](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Faz",
+            "serves": "Serve",
+            "serving": "Porção",
+            "servings": "Porções",
+            "yield": "Rendimento",
+            "yields": "Rendimentos"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Não tem permissões para efetuar esta ação",
+        "recursive-recipe-link": "Uma receita não pode referenciar-se a si própria, direta ou indiretamente",
         "no-entry-found": "O recurso solicitado não foi encontrado",
         "integrity-error": "Erro de integridade da base de dados",
         "username-conflict-error": "Este nome de utilizador já está em uso",
@@ -34,7 +45,8 @@
         "generic-created-with-url": "{name} foi criado, {url}",
         "generic-updated-with-url": "{name} foi atualizado, {url}",
         "generic-duplicated": "{name} foi duplicado",
-        "generic-deleted": "{name} foi removido"
+        "generic-deleted": "{name} foi removido",
+        "logged-out": "Sessão terminada"
     },
     "datetime": {
         "year": "ano|anos",
@@ -44,5 +56,28 @@
         "second": "segundo|segundos",
         "millisecond": "milissegundo|milissegundos",
         "microsecond": "microssegundo|microssegundos"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie Esqueceu-se da Palavra-passe",
+            "header_text": "Esqueci-me da Palavra-passe",
+            "message_top": "Solicitou a reposição da sua palavra-passe.",
+            "message_bottom": "Clique no botão acima para redefinir a sua palavra-passe.",
+            "button_text": "Repor Palavra-passe"
+        },
+        "invitation": {
+            "subject": "Convite para aderir ao Melie",
+            "header_text": "Está convidado!",
+            "message_top": "Foi convidado para aderir ao Mealie.",
+            "message_bottom": "Clique no botão acima para aceitar o convite.",
+            "button_text": "Aceitar Convite"
+        },
+        "test": {
+            "subject": "Email de testes do Mealie",
+            "header_text": "Email de Teste",
+            "message_top": "Este é um email de teste.",
+            "message_bottom": "Clique no botão acima para testar o email.",
+            "button_text": "Abrir o Mealie"
+        }
     }
 }

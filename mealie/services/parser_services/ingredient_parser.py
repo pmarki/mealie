@@ -1,18 +1,14 @@
-from abc import ABC, abstractmethod
 from fractions import Fraction
-from typing import TypeVar
 
-from pydantic import UUID4, BaseModel
-from rapidfuzz import fuzz, process
+from ingredient_parser import parse_ingredient
+from ingredient_parser.dataclasses import CompositeIngredientAmount, IngredientAmount
+from ingredient_parser.dataclasses import ParsedIngredient as IngredientParserParsedIngredient
+from pydantic import UUID4
 from sqlalchemy.orm import Session
 
 from mealie.core.root_logger import get_logger
-from mealie.db.models.recipe.ingredient import IngredientFoodModel, IngredientUnitModel
-from mealie.repos.all_repositories import get_repositories
-from mealie.repos.repository_factory import AllRepositories
 from mealie.schema.recipe import RecipeIngredient
 from mealie.schema.recipe.recipe_ingredient import (
-    MAX_INGREDIENT_DENOMINATOR,
     CreateIngredientFood,
     CreateIngredientUnit,
     IngredientConfidence,
@@ -21,153 +17,12 @@ from mealie.schema.recipe.recipe_ingredient import (
     ParsedIngredient,
     RegisteredParser,
 )
-from mealie.schema.response.pagination import PaginationQuery
 
-from . import brute, crfpp
+from . import brute, openai
+from ._base import ABCIngredientParser
+from .parser_utils import extract_quantity_from_string
 
 logger = get_logger(__name__)
-T = TypeVar("T", bound=BaseModel)
-
-
-class ABCIngredientParser(ABC):
-    """
-    Abstract class for ingredient parsers.
-    """
-
-    def __init__(self, group_id: UUID4, session: Session) -> None:
-        self.group_id = group_id
-        self.session = session
-
-        self._foods_by_alias: dict[str, IngredientFood] | None = None
-        self._units_by_alias: dict[str, IngredientUnit] | None = None
-
-    @property
-    def _repos(self) -> AllRepositories:
-        return get_repositories(self.session)
-
-    @property
-    def foods_by_alias(self) -> dict[str, IngredientFood]:
-        if self._foods_by_alias is None:
-            foods_repo = self._repos.ingredient_foods.by_group(self.group_id)
-            query = PaginationQuery(page=1, per_page=-1)
-            all_foods = foods_repo.page_all(query).items
-
-            foods_by_alias: dict[str, IngredientFood] = {}
-            for food in all_foods:
-                if food.name:
-                    foods_by_alias[IngredientFoodModel.normalize(food.name)] = food
-                if food.plural_name:
-                    foods_by_alias[IngredientFoodModel.normalize(food.plural_name)] = food
-
-                for alias in food.aliases or []:
-                    if alias.name:
-                        foods_by_alias[IngredientFoodModel.normalize(alias.name)] = food
-
-            self._foods_by_alias = foods_by_alias
-
-        return self._foods_by_alias
-
-    @property
-    def units_by_alias(self) -> dict[str, IngredientUnit]:
-        if self._units_by_alias is None:
-            units_repo = self._repos.ingredient_units.by_group(self.group_id)
-            query = PaginationQuery(page=1, per_page=-1)
-            all_units = units_repo.page_all(query).items
-
-            units_by_alias: dict[str, IngredientUnit] = {}
-            for unit in all_units:
-                if unit.name:
-                    units_by_alias[IngredientUnitModel.normalize(unit.name)] = unit
-                if unit.plural_name:
-                    units_by_alias[IngredientUnitModel.normalize(unit.plural_name)] = unit
-                if unit.abbreviation:
-                    units_by_alias[IngredientUnitModel.normalize(unit.abbreviation)] = unit
-                if unit.plural_abbreviation:
-                    units_by_alias[IngredientUnitModel.normalize(unit.plural_abbreviation)] = unit
-
-                for alias in unit.aliases or []:
-                    if alias.name:
-                        units_by_alias[IngredientUnitModel.normalize(alias.name)] = unit
-
-            self._units_by_alias = units_by_alias
-
-        return self._units_by_alias
-
-    @property
-    def food_fuzzy_match_threshold(self) -> int:
-        """Minimum threshold to fuzzy match against a database food search"""
-
-        return 85
-
-    @property
-    def unit_fuzzy_match_threshold(self) -> int:
-        """Minimum threshold to fuzzy match against a database unit search"""
-
-        return 70
-
-    @abstractmethod
-    def parse_one(self, ingredient_string: str) -> ParsedIngredient: ...
-
-    @abstractmethod
-    def parse(self, ingredients: list[str]) -> list[ParsedIngredient]: ...
-
-    @classmethod
-    def find_match(cls, match_value: str, *, store_map: dict[str, T], fuzzy_match_threshold: int = 0) -> T | None:
-        # check for literal matches
-        if match_value in store_map:
-            return store_map[match_value]
-
-        # fuzzy match against food store
-        fuzz_result = process.extractOne(
-            match_value, store_map.keys(), scorer=fuzz.ratio, score_cutoff=fuzzy_match_threshold
-        )
-        if fuzz_result is None:
-            return None
-
-        return store_map[fuzz_result[0]]
-
-    def find_food_match(self, food: IngredientFood | CreateIngredientFood | str) -> IngredientFood | None:
-        if isinstance(food, IngredientFood):
-            return food
-
-        food_name = food if isinstance(food, str) else food.name
-        match_value = IngredientFoodModel.normalize(food_name)
-        return self.find_match(
-            match_value,
-            store_map=self.foods_by_alias,
-            fuzzy_match_threshold=self.food_fuzzy_match_threshold,
-        )
-
-    def find_unit_match(self, unit: IngredientUnit | CreateIngredientUnit | str) -> IngredientUnit | None:
-        if isinstance(unit, IngredientUnit):
-            return unit
-
-        unit_name = unit if isinstance(unit, str) else unit.name
-        match_value = IngredientUnitModel.normalize(unit_name)
-        return self.find_match(
-            match_value,
-            store_map=self.units_by_alias,
-            fuzzy_match_threshold=self.unit_fuzzy_match_threshold,
-        )
-
-    def find_ingredient_match(self, ingredient: ParsedIngredient) -> ParsedIngredient:
-        if ingredient.ingredient.food and (food_match := self.find_food_match(ingredient.ingredient.food)):
-            ingredient.ingredient.food = food_match
-
-        if ingredient.ingredient.unit and (unit_match := self.find_unit_match(ingredient.ingredient.unit)):
-            ingredient.ingredient.unit = unit_match
-
-        # Parser might have wrongly split a food into a unit and food.
-        if isinstance(ingredient.ingredient.food, CreateIngredientFood) and isinstance(
-            ingredient.ingredient.unit, CreateIngredientUnit
-        ):
-            if food_match := self.find_food_match(
-                f"{ingredient.ingredient.unit.name} {ingredient.ingredient.food.name}"
-            ):
-                ingredient.ingredient.food = food_match
-                ingredient.ingredient.unit = None
-
-        return ingredient
 
 
 class BruteForceParser(ABCIngredientParser):
@@ -175,77 +30,170 @@ class BruteForceParser(ABCIngredientParser):
     Brute force ingredient parser.
     """
 
-    def parse_one(self, ingredient: str) -> ParsedIngredient:
-        bfi = brute.parse(ingredient, self)
+    async def parse_one(self, ingredient_string: str) -> ParsedIngredient:
+        bfi = brute.parse(ingredient_string, self)
 
         parsed_ingredient = ParsedIngredient(
-            input=ingredient,
+            input=ingredient_string,
             ingredient=RecipeIngredient(
                 unit=CreateIngredientUnit(name=bfi.unit),
                 food=CreateIngredientFood(name=bfi.food),
-                disable_amount=False,
                 quantity=bfi.amount,
                 note=bfi.note,
             ),
         )
 
-        return self.find_ingredient_match(parsed_ingredient)
+        matched_ingredient = self.find_ingredient_match(parsed_ingredient)
 
-    def parse(self, ingredients: list[str]) -> list[ParsedIngredient]:
-        return [self.parse_one(ingredient) for ingredient in ingredients]
+        qty_conf = 1
+        note_conf = 1
+
+        unit_obj = matched_ingredient.ingredient.unit
+        food_obj = matched_ingredient.ingredient.food
+
+        unit_conf = 1 if bfi.unit is None or isinstance(unit_obj, IngredientUnit) else 0
+        food_conf = 1 if bfi.food is None or isinstance(food_obj, IngredientFood) else 0
+
+        avg_conf = (qty_conf + unit_conf + food_conf + note_conf) / 4
+
+        matched_ingredient.confidence = IngredientConfidence(
+            average=avg_conf,
+            quantity=qty_conf,
+            unit=unit_conf,
+            food=food_conf,
+            comment=note_conf,
+        )
+
+        return matched_ingredient
+
+    async def parse(self, ingredients: list[str]) -> list[ParsedIngredient]:
+        return [await self.parse_one(ingredient) for ingredient in ingredients]
 
 
 class NLPParser(ABCIngredientParser):
     """
-    Class for CRFPP ingredient parsers.
+    Class for Ingredient Parser library
     """
 
-    def _crf_to_ingredient(self, crf_model: crfpp.CRFIngredient) -> ParsedIngredient:
-        ingredient = None
+    @staticmethod
+    def _extract_amount(ingredient: IngredientParserParsedIngredient) -> IngredientAmount:
+        if not (ingredient_amounts := ingredient.amount):
+            return IngredientAmount(
+                quantity=Fraction(0), quantity_max=Fraction(0), unit="", text="", confidence=0, starting_index=-1
+            )
 
-        try:
-            ingredient = RecipeIngredient(
-                title="",
-                note=crf_model.comment,
-                unit=CreateIngredientUnit(name=crf_model.unit),
-                food=CreateIngredientFood(name=crf_model.name),
-                disable_amount=False,
-                quantity=float(
-                    sum(Fraction(s).limit_denominator(MAX_INGREDIENT_DENOMINATOR) for s in crf_model.qty.split())
-                ),
-            )
-        except Exception as e:
-            logger.error(f"Failed to parse ingredient: {crf_model}: {e}")
-            # TODO: Capture some sort of state for the user to see that an exception occurred
-            ingredient = RecipeIngredient(
-                title="",
-                note=crf_model.input,
-            )
+        ingredient_amount = ingredient_amounts[0]
+        if isinstance(ingredient_amount, CompositeIngredientAmount):
+            ingredient_amount = ingredient_amount.amounts[0]
+
+        return ingredient_amount
+
+    @staticmethod
+    def _extract_quantity(ingredient_amount: IngredientAmount) -> tuple[float, float]:
+        confidence = ingredient_amount.confidence
+
+        if isinstance(ingredient_amount.quantity, str):
+            qty = extract_quantity_from_string(ingredient_amount.quantity)[0]
+        else:
+            try:
+                qty = float(ingredient_amount.quantity)
+            except ValueError:
+                qty = 0
+                confidence = 0
+
+        return qty, confidence
+
+    @staticmethod
+    def _extract_unit(ingredient_amount: IngredientAmount) -> tuple[str, float]:
+        confidence = ingredient_amount.confidence
+        unit = str(ingredient_amount.unit) if ingredient_amount.unit else ""
+        return unit, confidence
+
+    @staticmethod
+    def _extract_food(ingredient: IngredientParserParsedIngredient) -> tuple[str, float]:
+        if not ingredient.name:
+            return "", 0
+
+        ingredient_name = ingredient.name[0]
+        confidence = ingredient_name.confidence
+        food = ingredient_name.text
+
+        return food, confidence
+
+    @staticmethod
+    def _extract_note(ingredient: IngredientParserParsedIngredient) -> tuple[str, float]:
+        confidences: list[float] = []
+        note_parts: list[str] = []
+        if ingredient.size:
+            note_parts.append(ingredient.size.text)
+            confidences.append(ingredient.size.confidence)
+        if ingredient.preparation:
+            note_parts.append(ingredient.preparation.text)
+            confidences.append(ingredient.preparation.confidence)
+        if ingredient.comment:
+            note_parts.append(ingredient.comment.text)
+            confidences.append(ingredient.comment.confidence)
+        if ingredient.purpose:
+            note_parts.append(ingredient.purpose.text)
+            confidences.append(ingredient.purpose.confidence)
+
+        # average confidence among all note parts
+        confidence = sum(confidences) / len(confidences) if confidences else 0
+        note = ", ".join(note_parts)
+        note = note.replace("(", "").replace(")", "")
+
+        return note, confidence
+
+    def _convert_ingredient(self, ingredient: IngredientParserParsedIngredient) -> ParsedIngredient:
+        ingredient_amount = self._extract_amount(ingredient)
+        qty, qty_conf = self._extract_quantity(ingredient_amount)
+        unit, unit_conf = self._extract_unit(ingredient_amount)
+        food, food_conf = self._extract_food(ingredient)
+        note, note_conf = self._extract_note(ingredient)
+
+        # average confidence for components which were parsed
+        confidences: list[float] = []
+        if qty:
+            confidences.append(qty_conf)
+        if unit:
+            confidences.append(unit_conf)
+        if food:
+            confidences.append(food_conf)
+        if note:
+            confidences.append(note_conf)
 
         parsed_ingredient = ParsedIngredient(
-            input=crf_model.input,
-            ingredient=ingredient,
+            input=ingredient.sentence,
             confidence=IngredientConfidence(
-                quantity=crf_model.confidence.qty,
-                food=crf_model.confidence.name,
-                **crf_model.confidence.model_dump(),
+                average=(sum(confidences) / len(confidences)) if confidences else 0,
+                quantity=qty_conf,
+                unit=unit_conf,
+                food=food_conf,
+                comment=note_conf,
+            ),
+            ingredient=RecipeIngredient(
+                title="",
+                quantity=qty,
+                unit=CreateIngredientUnit(name=unit) if unit else None,
+                food=CreateIngredientFood(name=food) if food else None,
+                note=note,
             ),
         )
 
         return self.find_ingredient_match(parsed_ingredient)
 
-    def parse(self, ingredients: list[str]) -> list[ParsedIngredient]:
-        crf_models = crfpp.convert_list_to_crf_model(ingredients)
-        return [self._crf_to_ingredient(crf_model) for crf_model in crf_models]
+    async def parse_one(self, ingredient_string: str) -> ParsedIngredient:
+        parsed_ingredient = parse_ingredient(ingredient_string)
+        return self._convert_ingredient(parsed_ingredient)
 
-    def parse_one(self, ingredient: str) -> ParsedIngredient:
-        items = self.parse([ingredient])
-        return items[0]
+    async def parse(self, ingredients: list[str]) -> list[ParsedIngredient]:
+        return [await self.parse_one(ingredient) for ingredient in ingredients]
 
 
-__registrar = {
+__registrar: dict[RegisteredParser, type[ABCIngredientParser]] = {
     RegisteredParser.nlp: NLPParser,
     RegisteredParser.brute: BruteForceParser,
+    RegisteredParser.openai: openai.OpenAIParser,
 }
 
 

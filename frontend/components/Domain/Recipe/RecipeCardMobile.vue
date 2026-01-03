@@ -1,52 +1,98 @@
 <template>
-  <v-expand-transition>
-    <v-card
-      :ripple="false"
-      :class="isFlat ? 'mx-auto flat' : 'mx-auto'"
-      :style="{ cursor }"
-      hover
-      :to="$listeners.selected ? undefined : recipeRoute"
-      @click="$emit('selected')"
-    >
-      <v-img v-if="vertical" class="rounded-sm">
-        <RecipeCardImage
-          :icon-size="100"
-          :height="150"
-          :slug="slug"
-          :recipe-id="recipeId"
-          small
-          :image-version="image"
-        />
-      </v-img>
-      <v-list-item three-line :class="vertical ? 'px-2' : 'px-0'">
-        <slot v-if="!vertical" name="avatar">
-          <v-list-item-avatar tile size="125" class="v-mobile-img rounded-sm my-0">
-            <RecipeCardImage
-              :icon-size="100"
-              :height="125"
-              :slug="slug"
-              :recipe-id="recipeId"
-              small
-              :image-version="image"
-            />
-          </v-list-item-avatar>
-        </slot>
-        <v-list-item-content class="py-0">
-          <v-list-item-title class="mt-3 mb-1">{{ name }} </v-list-item-title>
-          <v-list-item-subtitle>
-            <SafeMarkdown :source="description" />
-          </v-list-item-subtitle>
-          <div class="d-flex flex-wrap justify-end align-center">
-            <slot name="actions">
-              <RecipeFavoriteBadge v-if="isOwnGroup && showRecipeContent" :recipe-id="recipeId" show-always />
-              <RecipeRating
-                :class="isOwnGroup ? 'ml-auto' : 'ml-auto pb-2'"
-                :value="rating"
-                :recipe-id="recipeId"
+  <div :style="`height: ${height}px;`">
+    <v-expand-transition>
+      <v-card
+        :ripple="false"
+        :class="[
+          isFlat ? 'mx-auto flat' : 'mx-auto',
+          { 'disable-highlight': disableHighlight },
+        ]"
+        :style="{ cursor }"
+        hover
+        height="100%"
+        :to="$attrs.selected ? undefined : recipeRoute"
+        @click="$emit('selected')"
+      >
+        <v-img
+          v-if="vertical"
+          class="rounded-sm"
+          cover
+        >
+          <RecipeCardImage
+            tiny
+            :icon-size="100"
+            :slug="slug"
+            :recipe-id="recipeId"
+            :image-version="image"
+            :height="height"
+          />
+        </v-img>
+        <v-list-item
+          lines="two"
+          class="py-0"
+          :class="vertical ? 'px-2' : 'px-0'"
+          item-props
+          height="100%"
+          density="compact"
+        >
+          <template #prepend>
+            <slot
+              v-if="!vertical"
+              name="avatar"
+            >
+              <RecipeCardImage
+                tiny
+                :icon-size="100"
                 :slug="slug"
-                :small="true"
+                :recipe-id="recipeId"
+                :image-version="image"
+                width="125"
+                :height="height"
               />
-              <v-spacer></v-spacer>
+            </slot>
+          </template>
+          <div class="pl-4 d-flex flex-column justify-space-between align-stretch pr-2">
+            <v-list-item-title class="mt-3 mb-1 text-top text-truncate w-100">
+              {{ name }}
+            </v-list-item-title>
+            <v-list-item-subtitle class="ma-0 text-top">
+              <SafeMarkdown v-if="description" :source="description" />
+              <p v-else>
+                <br>
+                <br>
+                <br>
+              </p>
+            </v-list-item-subtitle>
+            <div
+              class="d-flex flex-nowrap justify-start ma-0 pt-2 pb-0"
+              style="overflow-x: hidden; overflow-y: hidden; white-space: nowrap;"
+            >
+              <RecipeChips
+                :truncate="true"
+                :items="tags"
+                :title="false"
+                :limit="2"
+                small
+                url-prefix="tags"
+                v-bind="$attrs"
+              />
+            </div>
+          </div>
+          <slot name="actions">
+            <v-card-actions class="w-100 my-0 px-1 py-0">
+              <RecipeFavoriteBadge
+                v-if="isOwnGroup && showRecipeContent"
+                :recipe-id="recipeId"
+                show-always
+                class="ma-0 pa-0"
+              />
+              <div v-else class="my-0 px-1 py-0" /> <!-- Empty div to keep the layout consistent -->
+              <RecipeCardRating
+                v-if="showRecipeContent"
+                :class="[{ 'pb-2': !isOwnGroup }, 'ml-n2']"
+                :model-value="rating"
+                :recipe-id="recipeId"
+              />
 
               <!-- If we're not logged-in, no items display, so we hide this menu -->
               <!-- We also add padding to the v-rating above to compensate -->
@@ -56,9 +102,10 @@
                 :menu-icon="$globals.icons.dotsHorizontal"
                 :name="name"
                 :recipe-id="recipeId"
+                class="ml-auto"
                 :use-items="{
                   delete: false,
-                  edit: true,
+                  edit: false,
                   download: true,
                   mealplanner: true,
                   shoppingList: true,
@@ -68,89 +115,67 @@
                 }"
                 @deleted="$emit('delete', slug)"
               />
-            </slot>
-          </div>
-        </v-list-item-content>
-      </v-list-item>
-      <slot />
-    </v-card>
-  </v-expand-transition>
+            </v-card-actions>
+          </slot>
+        </v-list-item>
+        <slot />
+      </v-card>
+    </v-expand-transition>
+  </div>
 </template>
 
-<script lang="ts">
-import { computed, defineComponent, useContext, useRoute } from "@nuxtjs/composition-api";
+<script setup lang="ts">
 import RecipeFavoriteBadge from "./RecipeFavoriteBadge.vue";
-import RecipeContextMenu from "./RecipeContextMenu.vue";
+import RecipeContextMenu from "./RecipeContextMenu/RecipeContextMenu.vue";
 import RecipeCardImage from "./RecipeCardImage.vue";
-import RecipeRating from "./RecipeRating.vue";
+import RecipeCardRating from "./RecipeCardRating.vue";
+import RecipeChips from "./RecipeChips.vue";
 import { useLoggedInState } from "~/composables/use-logged-in-state";
 
-export default defineComponent({
-  components: {
-    RecipeFavoriteBadge,
-    RecipeContextMenu,
-    RecipeRating,
-    RecipeCardImage,
-  },
-  props: {
-    name: {
-      type: String,
-      required: true,
-    },
-    slug: {
-      type: String,
-      required: true,
-    },
-    description: {
-      type: String,
-      required: true,
-    },
-    rating: {
-      type: Number,
-      default: 0,
-    },
-    image: {
-      type: String,
-      required: false,
-      default: "abc123",
-    },
-    recipeId: {
-      type: String,
-      required: true,
-    },
-    vertical: {
-      type: Boolean,
-      default: false,
-    },
-    isFlat: {
-      type: Boolean,
-      default: false,
-    },
-  },
-  setup(props) {
-    const { $auth } = useContext();
-    const { isOwnGroup } = useLoggedInState();
-
-    const route = useRoute();
-    const groupSlug = computed(() => route.value.params.groupSlug || $auth.user?.groupSlug || "");
-    const showRecipeContent = computed(() => props.recipeId && props.slug);
-    const recipeRoute = computed<string>(() => {
-      return showRecipeContent.value ? `/g/${groupSlug.value}/r/${props.slug}` : "";
-    });
-    const cursor = computed(() => showRecipeContent.value ? "pointer" : "auto");
-
-
-    return {
-      isOwnGroup,
-      recipeRoute,
-      showRecipeContent,
-      cursor,
-    };
-  },
+interface Props {
+  name: string;
+  slug: string;
+  description: string;
+  rating?: number;
+  image?: string;
+  tags?: Array<any>;
+  recipeId: string;
+  vertical?: boolean;
+  isFlat?: boolean;
+  height?: number;
+  disableHighlight?: boolean;
+}
+const props = withDefaults(defineProps<Props>(), {
+  rating: 0,
+  image: "abc123",
+  tags: () => [],
+  vertical: false,
+  isFlat: false,
+  height: 150,
+  disableHighlight: false,
 });
+
+defineEmits<{
+  selected: [];
+  delete: [slug: string];
+}>();
+
+const $auth = useMealieAuth();
+const { isOwnGroup } = useLoggedInState();
+
+const route = useRoute();
+const groupSlug = computed(() => route.params.groupSlug || $auth.user.value?.groupSlug || "");
+const showRecipeContent = computed(() => props.recipeId && props.slug);
+const recipeRoute = computed<string>(() => {
+  return showRecipeContent.value ? `/g/${groupSlug.value}/r/${props.slug}` : "";
+});
+const cursor = computed(() => showRecipeContent.value ? "pointer" : "auto");
 </script>
 
-<style>
+<style scoped>
+:deep(.v-list-item__prepend) {
+  height: 100%;
+}
 .v-mobile-img {
   padding-top: 0;
   padding-bottom: 0;
@@ -178,8 +203,13 @@ export default defineComponent({
   align-self: start !important;
 }
 
-.flat, .theme--dark .flat {
-  box-shadow: none!important;
-  background-color: transparent!important;
+.flat,
+.theme--dark .flat {
+  box-shadow: none !important;
+  background-color: transparent !important;
+}
+
+.disable-highlight :deep(.v-card__overlay) {
+  opacity: 0 !important;
 }
 </style>

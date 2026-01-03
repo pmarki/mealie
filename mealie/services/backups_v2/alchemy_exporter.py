@@ -1,22 +1,54 @@
 import datetime
+import os
 import uuid
+from logging import Logger
 from os import path
-from pathlib import Path
+from textwrap import dedent
 from typing import Any
-
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel
-from sqlalchemy import ForeignKey, ForeignKeyConstraint, MetaData, Table, create_engine, insert, text
-from sqlalchemy.engine import base
-from sqlalchemy.orm import sessionmaker
 
 from alembic import command
 from alembic.config import Config
+from fastapi.encoders import jsonable_encoder
+from pydantic import BaseModel
+from sqlalchemy import Connection, ForeignKey, ForeignKeyConstraint, MetaData, Table, create_engine, insert, text
+from sqlalchemy.engine import base
+from sqlalchemy.orm import sessionmaker
+
 from mealie.db import init_db
-from mealie.db.models._model_utils import GUID
+from mealie.db.fixes.fix_migration_data import fix_migration_data
+from mealie.db.init_db import ALEMBIC_DIR
+from mealie.db.models._model_utils.guid import GUID
 from mealie.services._base_service import BaseService
 
-PROJECT_DIR = Path(__file__).parent.parent.parent.parent
+
+class ForeignKeyDisabler:
+    def __init__(self, connection: Connection, dialect_name: str, *, logger: Logger | None = None):
+        self.connection = connection
+        self.is_postgres = dialect_name == "postgresql"
+        self.logger = logger
+
+        self._initial_fk_state: str | None = None
+
+    def __enter__(self):
+        if self.is_postgres:
+            self._initial_fk_state = self.connection.execute(text("SHOW session_replication_role;")).scalar()
+            self.connection.execute(text("SET session_replication_role = 'replica';"))
+        else:
+            self._initial_fk_state = self.connection.execute(text("PRAGMA foreign_keys;")).scalar()
+            self.connection.execute(text("PRAGMA foreign_keys = OFF;"))
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if self.is_postgres:
+                initial_state = self._initial_fk_state or "origin"
+                self.connection.execute(text(f"SET session_replication_role = '{initial_state}';"))
+            else:
+                initial_state = self._initial_fk_state or "ON"
+                self.connection.execute(text(f"PRAGMA foreign_keys = {initial_state};"))
+        except Exception:
+            if self.logger:
+                self.logger.exception("Error when re-enabling foreign keys")
+            raise
 
 
 class AlchemyExporter(BaseService):
@@ -136,6 +168,14 @@ class AlchemyExporter(BaseService):
         Returns the entire SQLAlchemy database as a python dictionary. This dictionary is wrapped by
         jsonable_encoder to ensure that the object can be converted to a json string.
         """
+
+        # run database fixes first so we aren't backing up bad data
+        with self.session_maker() as session:
+            try:
+                fix_migration_data(session)
+            except Exception:
+                self.logger.error("Error fixing migration data during export; continuing anyway")
+
         with self.engine.connect() as connection:
             self.meta.reflect(bind=self.engine)  #  http://docs.sqlalchemy.org/en/rel_0_9/core/reflection.html
 
@@ -151,49 +191,53 @@ class AlchemyExporter(BaseService):
         alembic_data = db_dump["alembic_version"]
         alembic_version = alembic_data[0]["version_num"]
 
-        alembic_cfg = Config(str(PROJECT_DIR / "alembic.ini"))
-        # alembic's file resolver wants to use the "mealie" subdirectory when called from within the server package
-        # Just override this to use the correct migrations path
-        alembic_cfg.set_main_option("script_location", path.join(PROJECT_DIR, "alembic"))
+        alembic_cfg_path = os.getenv("ALEMBIC_CONFIG_FILE", default=str(ALEMBIC_DIR / "alembic.ini"))
+
+        if not path.isfile(alembic_cfg_path):
+            raise Exception("Provided alembic config path doesn't exist")
+
+        alembic_cfg = Config(alembic_cfg_path)
         command.upgrade(alembic_cfg, alembic_version)
 
         del db_dump["alembic_version"]
         """Restores all data from dictionary into the database"""
         with self.engine.begin() as connection:
-            data = self.convert_types(db_dump)
+            with ForeignKeyDisabler(connection, self.engine.dialect.name, logger=self.logger):
+                data = self.convert_types(db_dump)
 
-            self.meta.reflect(bind=self.engine)
-            for table_name, rows in data.items():
-                if not rows:
-                    continue
-                table = self.meta.tables[table_name]
-                rows = self.clean_rows(db_dump, table, rows)
+                self.meta.reflect(bind=self.engine)
+                for table_name, rows in data.items():
+                    if not rows:
+                        continue
+                    table = self.meta.tables[table_name]
+                    rows = self.clean_rows(db_dump, table, rows)
 
-                connection.execute(table.delete())
-                connection.execute(insert(table), rows)
-            if self.engine.dialect.name == "postgresql":
-                # Restore postgres sequence numbers
-                connection.execute(
-                    text(
-                        """
-                SELECT SETVAL('api_extras_id_seq', (SELECT MAX(id) FROM api_extras));
-SELECT SETVAL('group_meal_plans_id_seq', (SELECT MAX(id) FROM group_meal_plans));
-SELECT SETVAL('ingredient_food_extras_id_seq', (SELECT MAX(id) FROM ingredient_food_extras));
-SELECT SETVAL('invite_tokens_id_seq', (SELECT MAX(id) FROM invite_tokens));
-SELECT SETVAL('long_live_tokens_id_seq', (SELECT MAX(id) FROM long_live_tokens));
-SELECT SETVAL('notes_id_seq', (SELECT MAX(id) FROM notes));
-SELECT SETVAL('password_reset_tokens_id_seq', (SELECT MAX(id) FROM password_reset_tokens));
-SELECT SETVAL('recipe_assets_id_seq', (SELECT MAX(id) FROM recipe_assets));
-SELECT SETVAL('recipe_ingredient_ref_link_id_seq', (SELECT MAX(id) FROM recipe_ingredient_ref_link));
-SELECT SETVAL('recipe_nutrition_id_seq', (SELECT MAX(id) FROM recipe_nutrition));
-SELECT SETVAL('recipe_settings_id_seq', (SELECT MAX(id) FROM recipe_settings));
-SELECT SETVAL('recipes_ingredients_id_seq', (SELECT MAX(id) FROM recipes_ingredients));
-SELECT SETVAL('server_tasks_id_seq', (SELECT MAX(id) FROM server_tasks));
-SELECT SETVAL('shopping_list_extras_id_seq', (SELECT MAX(id) FROM shopping_list_extras));
-SELECT SETVAL('shopping_list_item_extras_id_seq', (SELECT MAX(id) FROM shopping_list_item_extras));
-"""
+                    connection.execute(table.delete())
+                    connection.execute(insert(table), rows)
+                if self.engine.dialect.name == "postgresql":
+                    # Restore postgres sequence numbers
+                    sequences = [
+                        ("api_extras_id_seq", "api_extras"),
+                        ("group_meal_plans_id_seq", "group_meal_plans"),
+                        ("ingredient_food_extras_id_seq", "ingredient_food_extras"),
+                        ("invite_tokens_id_seq", "invite_tokens"),
+                        ("long_live_tokens_id_seq", "long_live_tokens"),
+                        ("notes_id_seq", "notes"),
+                        ("password_reset_tokens_id_seq", "password_reset_tokens"),
+                        ("recipe_assets_id_seq", "recipe_assets"),
+                        ("recipe_ingredient_ref_link_id_seq", "recipe_ingredient_ref_link"),
+                        ("recipe_nutrition_id_seq", "recipe_nutrition"),
+                        ("recipe_settings_id_seq", "recipe_settings"),
+                        ("recipes_ingredients_id_seq", "recipes_ingredients"),
+                        ("server_tasks_id_seq", "server_tasks"),
+                        ("shopping_list_extras_id_seq", "shopping_list_extras"),
+                        ("shopping_list_item_extras_id_seq", "shopping_list_item_extras"),
+                    ]
+
+                    sql = "\n".join(
+                        [f"SELECT SETVAL('{seq}', (SELECT MAX(id) FROM {table}));" for seq, table in sequences]
                     )
-                )
+                    connection.execute(text(dedent(sql)))
 
         # Re-init database to finish migrations
         init_db.main()

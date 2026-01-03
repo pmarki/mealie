@@ -1,14 +1,33 @@
 <template>
   <v-autocomplete
+    ref="autocompleteRef"
     v-model="itemVal"
     v-bind="$attrs"
-    item-text="name"
+    v-model:search="searchInput"
+    item-title="name"
     return-object
     :items="items"
+    :custom-filter="normalizeFilter"
     :prepend-icon="icon || $globals.icons.tags"
+    auto-select-first
     clearable
+    color="primary"
     hide-details
-  />
+    @keyup.enter="emitCreate"
+  >
+    <template
+      v-if="create"
+      #append-item
+    >
+      <div class="px-2">
+        <BaseButton
+          block
+          size="small"
+          @click="emitCreate"
+        />
+      </div>
+    </template>
+  </v-autocomplete>
 </template>
 
 <script lang="ts">
@@ -31,13 +50,14 @@
  * Both the ID and Item can be synced. The item can be synced using the v-model syntax and the itemId can be synced
  * using the .sync syntax `item-id.sync="item.labelId"`
  */
-import { defineComponent, computed } from "@nuxtjs/composition-api";
-import { MultiPurposeLabelSummary } from "~/lib/api/types/labels";
-import { IngredientFood, IngredientUnit } from "~/lib/api/types/recipe";
 
-export default defineComponent({
+import type { MultiPurposeLabelSummary } from "~/lib/api/types/labels";
+import type { IngredientFood, IngredientUnit } from "~/lib/api/types/recipe";
+import { normalizeFilter } from "~/composables/use-utils";
+
+export default defineNuxtComponent({
   props: {
-    value: {
+    modelValue: {
       type: Object as () => MultiPurposeLabelSummary | IngredientFood | IngredientUnit,
       required: false,
       default: () => {
@@ -57,8 +77,15 @@ export default defineComponent({
       required: false,
       default: undefined,
     },
+    create: {
+      type: Boolean,
+      default: false,
+    },
   },
+  emits: ["update:modelValue", "update:item-id", "create"],
   setup(props, context) {
+    const autocompleteRef = ref<HTMLInputElement>();
+    const searchInput = ref("");
     const itemIdVal = computed({
       get: () => {
         return props.itemId || undefined;
@@ -70,17 +97,34 @@ export default defineComponent({
 
     const itemVal = computed({
       get: () => {
-        return props.value;
+        try {
+          return Object.keys(props.modelValue).length !== 0 ? props.modelValue : null;
+        }
+        catch {
+          return null;
+        }
       },
       set: (val) => {
         itemIdVal.value = val?.id || undefined;
-        context.emit("input", val);
+        context.emit("update:modelValue", val);
       },
     });
 
+    function emitCreate() {
+      if (props.items.some(item => item.name === searchInput.value)) {
+        return;
+      }
+      context.emit("create", searchInput.value);
+      autocompleteRef.value?.blur();
+    }
+
     return {
+      autocompleteRef,
       itemVal,
       itemIdVal,
+      searchInput,
+      emitCreate,
+      normalizeFilter,
     };
   },
 });

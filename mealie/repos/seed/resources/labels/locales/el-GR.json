@@ -1,6 +1,6 @@
 [
     {
-        "name": "Produce"
+        "name": "Παραγωγής"
     },
     {
         "name": "Σιτηρά"
@@ -21,31 +21,31 @@
         "name": "Ποτά"
     },
     {
-        "name": "Baked Goods"
+        "name": "Αρτοσκευάσματα"
     },
     {
         "name": "Κονσερβοποιημένα Αγαθά"
     },
     {
-        "name": "Condiments"
+        "name": "Καρυκεύματα"
     },
     {
-        "name": "Confectionary"
+        "name": "Ζαχαροπλαστική"
     },
     {
         "name": "Γαλακτοκομικά"
     },
     {
-        "name": "Κατεψυγμένα Φαγητά"
+        "name": "Κατεψυγμένα Τρόφιμα"
     },
     {
-        "name": "Health Foods"
+        "name": "Υγιεινά τρόφιμα"
     },
     {
-        "name": "Household"
+        "name": "Νοικοκυριό"
     },
     {
-        "name": "Meat Products"
+        "name": "Κρεατικά"
     },
     {
         "name": "Σνακ"

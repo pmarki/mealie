@@ -14,10 +14,15 @@ Mealie offers two main ways to create recipes. You can use the integrated recipe
 
 Mealie supports importing recipes from a few other sources besides websites. Currently the following sources are supported:
 
-- Mealie Pre v1
+- Tandoor
 - Nextcloud Cookbooks
 - Paprika
 - Chowdown
+- Plan to Eat
+- Recipe Keeper
+- Copy Me That
+- My Recipe Box
+- DVO Cook'n X3
 
 You can access these options on your installation at the `/group/migrations` page on your installation. If you'd like to see another source added, feel free to request so on Github.
 
@@ -31,8 +36,7 @@ Mealie has a robust and flexible recipe organization system with a few different
 
 #### Categories
 
-
-Categories are the overarching organizer for recipes. You can assign as many categories as you'd like to a recipe, but we recommend that you try to limit the categories you assign to a recipe to one or two. This helps keep categories as focused as possible while still allowing you to find recipes that are related to each other. For example, you might assign a recipe to the category **Breakfast**, **Lunch**, **Dinner**, or **Side**.
+Categories are the overarching organizer for recipes. You can assign as many categories as you'd like to a recipe, but we recommend that you try to limit the categories you assign to a recipe to one or two. This helps keep categories as focused as possible while still allowing you to find recipes that are related to each other. For example, you might assign a recipe to the category **Breakfast**, **Lunch**, **Dinner**, **Side**, or **Drinks**.
 
 [Categories Demo](https://demo.mealie.io/g/home/recipes/categories){ .md-button .md-button--primary }
 
@@ -69,19 +73,43 @@ Mealie uses a calendar like view to help you plan your meals. It shows you the p
 !!! tip
     You can also add a "Note" type entry to your meal-plan when you want to include something that might not have a specific recipes. This is great for leftovers, or for ordering out.
 
-[Mealplanner Demo](https://demo.mealie.io/group/mealplan/planner/view){ .md-button .md-button--primary }
+[Mealplanner Demo](https://demo.mealie.io/household/mealplan/planner/view){ .md-button .md-button--primary }
 
 ### Planner Rules
 
 The meal planner has the concept of plan rules. These offer a flexible way to use your organizers to customize how a random recipe is inserted into your meal plan. You can set rules to restrict the pool of recipes based on the Tags and/or Categories of a recipe. Additionally, since meal plans have a Breakfast, Lunch, Dinner, and Snack labels, you can specifically set a rule to be active for a **specific meal type** or even a **specific day of the week.**
 
-[Planner Settings Demo](https://demo.mealie.io/group/mealplan/settings){ .md-button .md-button--primary }
+[Planner Settings Demo](https://demo.mealie.io/household/mealplan/settings){ .md-button .md-button--primary }
 
 ## Shopping Lists
 
 The shopping lists feature is a great way to keep track of what you need to buy for your next meal. You can add items directly to the shopping list or link a recipe and all of it's ingredients to track meals during the week.
 
+Managing shopping lists can be done from the Sidebar > Shopping Lists. 
 
+Here you will be able to:
+
+- See items already on the Shopping List
+- See linked recipes with ingredients
+    - Toggling via the 'Pot' icon will show you the linked recipe, allowing you to click to access it. 
+- Check off an item
+- Add / Change / Remove / Sort Items via the grid icon
+    - Be sure if you are modifying an ingredient to click the 'Save' icon.
+- Add / Change / Remove / Sort Labels
+    - 'No Label' will always be on the top, others can be Reordered via the 'Reorder Labels' button
+
+!!! tip
+    If you accidentally checked off an item, you can uncheck it by expanding 'items checked' and unchecking it. This will add it back to the Shopping List.
+
+!!! tip
+    You can use Labels to categorize your ingredients. You may want to Label by Food Type (Frozen, Fresh, etc), by Store, Tool, Recipe, or more. Play around with this to see what works best for you.
+    
+!!! tip
+    You can toggle 'Food' on items so that if you add multiple of the same food / ingredient, Mealie will automatically combine them together. Do this by editing an item in the Shopping List and clicking the 'Apple' icon. If you then have recipes that contain "1 | cup | cheese" and "2 | cup | cheese" this would be combined to show "3 cups of cheese."
+
+[See FAQ for more information](../getting-started/faq.md)
+
+    
 [Shopping List Demo](https://demo.mealie.io/shopping-lists){ .md-button .md-button--primary }
 
 ## Integrations
@@ -91,9 +119,10 @@ Mealie is designed to integrate with many different external services. There are
 ### Notifiers
 
 Notifiers are event-driven notifications sent when specific actions are performed within Mealie. Some actions include:
-- creating a recipe
-- adding items to a shopping list
-- creating a new mealplan
+
+- Creating / Updating a recipe
+- Adding items to a shopping list
+- Creating a new mealplan
 
 Notifiers use the [Apprise library](https://github.com/caronc/apprise/wiki), which integrates with a large number of notification services. In addition, certain custom notifiers send basic event data to the consumer (e.g. the `id` of the resource). These include:
 
@@ -101,22 +130,22 @@ Notifiers use the [Apprise library](https://github.com/caronc/apprise/wiki), whi
 - `json` and `jsons`
 - `xml` and `xmls`
 
-[Notifiers Demo](https://demo.mealie.io/group/notifiers){ .md-button .md-button--primary }
+[Notifiers Demo](https://demo.mealie.io/household/notifiers){ .md-button .md-button--primary }
 
 ### Webhooks
 
 Unlike notifiers, which are event-driven notifications, Webhooks allow you to send scheduled notifications to your desired endpoint. Webhooks are sent on the day of a scheduled mealplan, at the specified time, and contain the mealplan data in the request.
 
-[Webhooks Demo](https://demo.mealie.io/group/webhooks){ .md-button .md-button--primary }
+[Webhooks Demo](https://demo.mealie.io/household/webhooks){ .md-button .md-button--primary }
 
 ### Recipe Actions
 
 Recipe Actions are custom actions you can add to all recipes in Mealie. This is a great way to add custom integrations that are fired manually. There are two types of recipe actions:
 
-1. link - these actions will take you directly to an external page
+1. link - these actions will take you directly to an external page. Merge fields can be used to customize the URL for each recipe
 2. post - these actions will send a `POST` request to the specified URL, with the recipe JSON in the request body. These can be used, for instance, to manually trigger a webhook in Home Assistant
 
-Recipe Action URLs can include merge fields to inject the current recipe's data. For instance, you can use the following URL to include a Google search with the recipe's slug:
+When using the "link" action type, Recipe Action URLs can include merge fields to inject the current recipe's data. For instance, you can use the following URL to include a Google search with the recipe's slug:
 ```
 https://www.google.com/search?q=${slug}
 ```
@@ -136,6 +165,9 @@ Below is a list of all valid merge fields:
 - ${id}
 - ${slug}
 - ${url}
+- ${servings}
+- ${yieldQuantity}
+- ${yieldText}
 
 To add, modify, or delete Recipe Actions, visit the Data Management page (more on that below).
 
@@ -160,6 +192,48 @@ Managing a robust collection of recipes inevitable requires a lot of data. Meali
 
 [Data Management Demo](https://demo.mealie.io/group/data/foods){ .md-button .md-button--primary }
 
+## Groups and Households
+
+Mealie lets you fully customize how you organize your users. You can use Groups to host multiple instances (or tenants) of Mealie which are completely isolated from each other. Within each Group you can organize users into Households which allow users to share recipes, but keep other items separate (e.g. meal plans and shopping lists).
+
+### Groups
+
+Groups are fully isolated instances of Mealie. Think of a goup as a completely separate, fully self-contained site. There is no data shared between groups. Each group has its own users, recipes, tags, categories, etc. A user logged-in to one group cannot make any changes to another.
+
+Common use cases for groups include:
+
+- Hosting multiple instances of Mealie for others who want to keep their data private and secure
+- Creating completely isolated recipe pools
+
+### Households
+
+Households are subdivisions within a single Group. Households maintain their own users and settings, while sharing their recipes with other households. Households also share organizers (tags, categories, etc.) with the entire group. Meal Plans, Shopping Lists, and Integrations are only accessible within a household.
+
+Common use cases for households include:
+
+- Sharing a common recipe pool amongst families
+- Maintaining separate meal plans and shopping lists from other households
+- Maintaining separate integrations and customizations from other households
+
+```mermaid
+flowchart TB
+    mealie[(Mealie)] ==> groups
+
+    %% Groups
+    groups((Groups)) --> ingredients & organizers
+    groups((Groups)) ====> households
+    ingredients("Ingredients<br/>(Foods, Units, Labels)")
+    organizers("Organizers<br/>(Categories, Tags, Tools)")
+
+    %% Households
+    households((Households)) --> recipes & mealplans & shoppinglists & integrations
+
+    recipes(Recipes & Cookbooks)
+    mealplans(Meal Plans)
+    shoppinglists(Shopping Lists)
+    integrations("Integrations<br/>(Notifiers, Webhooks)")
+```
+
 ## Server Administration
 
 ### Site Settings
@@ -168,11 +242,13 @@ The site settings page contains general information about your installation like
 
 [Settings Demo](https://demo.mealie.io/admin/site-settings){ .md-button .md-button--primary }
 
-### Users and Group
+### Users, Households, and Groups
 
-There is a small management area for users and groups that allows you to create, edit, and delete users and groups.
+There is a small management area for users, households, and groups.
 
 [Users Demo](https://demo.mealie.io/admin/manage/users){ .md-button .md-button--primary }
+[Households Demo](https://demo.mealie.io/admin/manage/households){ .md-button .md-button--primary }
+[Groups Demo](https://demo.mealie.io/admin/manage/groups){ .md-button .md-button--primary }
 
 ### Backups
 

@@ -1,13 +1,13 @@
 import { BaseAPI } from "../base/base-clients";
-import { EmailInitationResponse, EmailInvitation } from "~/lib/api/types/group";
-import { ForgotPassword } from "~/lib/api/types/user";
-import { EmailTest } from "~/lib/api/types/admin";
+import type { EmailInitationResponse, EmailInvitation } from "~/lib/api/types/household";
+import type { ForgotPassword } from "~/lib/api/types/user";
+import type { EmailTest } from "~/lib/api/types/admin";
 
 const routes = {
   base: "/api/admin/email",
   forgotPassword: "/api/users/forgot-password",
 
-  invitation: "/api/groups/invitations/email",
+  invitation: "/api/households/invitations/email",
 };
 
 export class EmailAPI extends BaseAPI {

@@ -22,15 +22,19 @@ class LDAPProvider(CredentialsProvider):
         super().__init__(session, data)
         self.conn = None
 
-    async def authenticate(self) -> tuple[str, timedelta] | None:
-        """Attempt to authenticate a user given a username and password"""
+    def authenticate(self) -> tuple[str, timedelta] | None:
+        """Attempt to authenticate a user given a username and password against an LDAP provider"""
+        # When LDAP is enabled, we need to still also support authentication with Mealie backend
+        # First we look to see if we have a user. If we don't we'll attempt to create one with LDAP
+        # If we do find a user, we will check if their auth method is LDAP and attempt to authenticate
+        # Otherwise, we will proceed with Mealie authentication
         user = self.try_get_user(self.data.username)
-        if not user or user.password == "LDAP" or user.auth_method == AuthMethod.LDAP:
+        if not user or user.auth_method == AuthMethod.LDAP:
             user = self.get_user()
             if user:
                 return self.get_access_token(user, self.data.remember_me)
 
-        return await super().authenticate()
+        return super().authenticate()
 
     def search_user(self, conn: LDAPObject) -> list[tuple[str, dict[str, list[bytes]]]] | None:
         """
@@ -64,7 +68,11 @@ class LDAPProvider(CredentialsProvider):
                 settings.LDAP_BASE_DN,
                 ldap.SCOPE_SUBTREE,
                 search_filter,
-                [settings.LDAP_ID_ATTRIBUTE, settings.LDAP_NAME_ATTRIBUTE, settings.LDAP_MAIL_ATTRIBUTE],
+                [
+                    settings.LDAP_ID_ATTRIBUTE,
+                    settings.LDAP_NAME_ATTRIBUTE,
+                    settings.LDAP_MAIL_ATTRIBUTE,
+                ],
             )
         except ldap.FILTER_ERROR:
             self._logger.error("[LDAP] Bad user search filter")
@@ -95,7 +103,7 @@ class LDAPProvider(CredentialsProvider):
         """
 
         settings = get_app_settings()
-        db = get_repositories(self.session)
+        db = get_repositories(self.session, group_id=None, household_id=None)
         if not self.data:
             return None
         data = self.data
@@ -168,7 +176,16 @@ class LDAPProvider(CredentialsProvider):
             )
 
         if settings.LDAP_ADMIN_FILTER:
-            should_be_admin = len(conn.search_s(user_dn, ldap.SCOPE_BASE, settings.LDAP_ADMIN_FILTER, [])) > 0
+            try:
+                should_be_admin = len(conn.search_s(user_dn, ldap.SCOPE_BASE, settings.LDAP_ADMIN_FILTER, [])) > 0
+            except (ldap.FILTER_ERROR, ldap.NO_SUCH_OBJECT) as e:
+                self._logger.warning(
+                    "Unable to determine if LDAP user should be an admin, defaulting to False. "
+                    "Is the LDAP_ADMIN_FILTER correct?"
+                )
+                self._logger.warning(f"{e.__class__.__name__}: {e}")
+                should_be_admin = False
+
             if user.admin != should_be_admin:
                 self._logger.debug(f"[LDAP] {'Setting' if should_be_admin else 'Removing'} user as admin")
                 user.admin = should_be_admin

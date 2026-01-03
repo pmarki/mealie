@@ -3,7 +3,7 @@ from sqlalchemy import ForeignKey, Integer, String, orm
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .._model_base import BaseMixins, SqlAlchemyBase
-from .._model_utils import auto_init
+from .._model_utils.auto_init import auto_init
 from .._model_utils.guid import GUID
 
 
@@ -23,8 +23,9 @@ class RecipeInstruction(SqlAlchemyBase):
     recipe_id: Mapped[GUID | None] = mapped_column(GUID, ForeignKey("recipes.id"), index=True)
     position: Mapped[int | None] = mapped_column(Integer, index=True)
     type: Mapped[str | None] = mapped_column(String, default="")
-    title: Mapped[str | None] = mapped_column(String)
-    text: Mapped[str | None] = mapped_column(String, index=True)
+    title: Mapped[str | None] = mapped_column(String)  # This is the section title
+    text: Mapped[str | None] = mapped_column(String)
+    summary: Mapped[str | None] = mapped_column(String)
 
     ingredient_references: Mapped[list[RecipeIngredientRefLink]] = orm.relationship(
         RecipeIngredientRefLink, cascade="all, delete-orphan"

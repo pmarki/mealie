@@ -1,46 +1,83 @@
 <template>
-  <v-app-bar clipped-left dense app color="primary" dark class="d-print-none">
+  <v-app-bar
+    clipped-left
+    density="compact"
+    app
+    color="primary"
+    dark
+    class="d-print-none"
+  >
     <slot />
     <router-link :to="routerLink">
-      <v-btn icon>
+      <v-btn
+        icon
+        color="white"
+      >
         <v-icon size="40"> {{ $globals.icons.primary }} </v-icon>
       </v-btn>
     </router-link>
 
-    <div btn class="pl-2">
-      <v-toolbar-title style="cursor: pointer" @click="$router.push(routerLink)"> Mealie </v-toolbar-title>
+    <div
+      btn
+      class="pl-2"
+    >
+      <v-toolbar-title
+        style="cursor: pointer"
+        @click="$router.push(routerLink)"
+      >
+        Mealie
+      </v-toolbar-title>
     </div>
     <RecipeDialogSearch ref="domSearchDialog" />
 
-    <v-spacer></v-spacer>
+    <v-spacer />
 
     <!-- Navigation Menu -->
     <template v-if="menu">
-      <div v-if="!$vuetify.breakpoint.xs" style="max-width: 500px" @click="activateSearch">
+      <v-responsive
+        v-if="!xs"
+        max-width="250"
+        @click="activateSearch"
+      >
         <v-text-field
           readonly
-          class="mt-6 rounded-xl"
+          class="mt-1"
           rounded
-          dark
-          solo
-          dense
+          variant="solo-filled"
+          density="compact"
           flat
           :prepend-inner-icon="$globals.icons.search"
-          background-color="primary darken-1"
-          color="white"
+          bg-color="primary-darken-1"
           :placeholder="$t('search.search-hint')"
-        >
-        </v-text-field>
-      </div>
-      <v-btn v-else icon @click="activateSearch">
+        />
+      </v-responsive>
+      <v-btn
+        v-else
+        icon
+        @click="activateSearch"
+      >
         <v-icon> {{ $globals.icons.search }}</v-icon>
       </v-btn>
-      <v-btn v-if="loggedIn && noAuthLogin.value" :text="$vuetify.breakpoint.smAndUp" :icon="$vuetify.breakpoint.xs" @click="$auth.logout()">
-        <v-icon :left="$vuetify.breakpoint.smAndUp">{{ $globals.icons.logout }}</v-icon>
-        {{ $vuetify.breakpoint.smAndUp ? $t("user.logout") : "" }}
+      <v-btn
+        v-if="loggedIn && noAuthLogin.value"
+        :variant="smAndUp ? 'text' : undefined"
+        :icon="xs"
+        @click="logout()"
+      >
+        <v-icon :start="smAndUp">
+          {{ $globals.icons.logout }}
+        </v-icon>
+        {{ smAndUp ? $t("user.logout") : "" }}
       </v-btn>
-      <v-btn v-else-if="!loggedIn" text nuxt to="/login">
-        <v-icon left>{{ $globals.icons.user }}</v-icon>
+      <v-btn
+        v-else
+        variant="text"
+        nuxt
+        to="/login"
+      >
+        <v-icon start>
+          {{ $globals.icons.user }}
+        </v-icon>
         {{ $t("user.login") }}
       </v-btn>
     </template>
@@ -48,12 +85,11 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onBeforeUnmount, onMounted, ref, useContext, useRoute } from "@nuxtjs/composition-api";
 import { useLoggedInState } from "~/composables/use-logged-in-state";
 import RecipeDialogSearch from "~/components/Domain/Recipe/RecipeDialogSearch.vue";
 import { useAppInfo } from "~/composables/api";
 
-export default defineComponent({
+export default defineNuxtComponent({
   components: { RecipeDialogSearch },
   props: {
     menu: {
@@ -62,10 +98,11 @@ export default defineComponent({
     },
   },
   setup() {
-    const { $auth } = useContext();
+    const $auth = useMealieAuth();
     const { loggedIn } = useLoggedInState();
     const route = useRoute();
-    const groupSlug = computed(() => route.value.params.groupSlug || $auth.user?.groupSlug || "");
+    const groupSlug = computed(() => route.params.groupSlug as string || $auth.user.value?.groupSlug || "");
+    const { xs, smAndUp } = useDisplay();
 
     const routerLink = computed(() => groupSlug.value ? `/g/${groupSlug.value}` : "/");
     const domSearchDialog = ref<InstanceType<typeof RecipeDialogSearch> | null>(null);
@@ -93,13 +130,30 @@ export default defineComponent({
       document.removeEventListener("keydown", handleKeyEvent);
     });
 
+    async function logout() {
+      try {
+        await $auth.signOut("/login?direct=1");
+      }
+      catch (e) {
+        console.error(e);
+      }
+    }
+
     return {
       activateSearch,
       domSearchDialog,
       routerLink,
       loggedIn,
       noAuthLogin,
+      logout,
+      xs, smAndUp,
     };
   },
 });
 </script>
+
+<style scoped>
+.v-toolbar {
+  z-index: 2010 !important;
+}
+</style>

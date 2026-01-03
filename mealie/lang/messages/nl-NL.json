@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Receptnamen moeten uniek zijn",
+        "recipe-created": "Recept aangemaakt op",
+        "recipe-image-deleted": "Receptafbeelding verwijderd",
         "recipe-defaults": {
             "ingredient-note": "250 gram bloem",
             "step-text": "Receptstappen en andere velden op de receptpagina ondersteunen Markdown syntaxis.\n\n**Voeg een link toe**\n\n[Mijn Link](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Maakt",
+            "serves": "Porties",
+            "serving": "Portie",
+            "servings": "Porties",
+            "yield": "Opbrengst",
+            "yields": "Opbrengsten"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Je hebt geen toestemming om deze actie uit te voeren",
+        "recursive-recipe-link": "Een recept kan niet naar zichzelf verwijzen, direct of indirect",
         "no-entry-found": "Het opgevraagde is niet gevonden",
         "integrity-error": "Database integriteitsfout",
         "username-conflict-error": "Deze gebruikersnaam is al in gebruik",
@@ -33,8 +44,9 @@
         "generic-updated": "{name} is bijgewerkt",
         "generic-created-with-url": "{name} is aangemaakt, {url}",
         "generic-updated-with-url": "{name} is bijgewerkt, {url}",
-        "generic-duplicated": "(naam) is gekopieerd",
-        "generic-deleted": "{name} is verwijderd"
+        "generic-duplicated": "{name} is gekopieerd",
+        "generic-deleted": "{name} is verwijderd",
+        "logged-out": ""
     },
     "datetime": {
         "year": "jaar|jaren",
@@ -42,7 +54,30 @@
         "hour": "uur|uren",
         "minute": "minuut|minuten",
         "second": "seconde|seconden",
-        "millisecond": "milliseconde milliseconden",
-        "microsecond": "microseconde microseconden"
+        "millisecond": "milliseconde|milliseconden",
+        "microsecond": "microseconde|microseconden"
+    },
+    "emails": {
+        "password": {
+            "subject": "Vergeten wachtwoord van Mealie",
+            "header_text": "Wachtwoord vergeten",
+            "message_top": "Je hebt gevraagd om een reset van je wachtwoord.",
+            "message_bottom": "Klik op de bovenstaande knop om uw wachtwoord te resetten.",
+            "button_text": "Wachtwoord opnieuw instellen"
+        },
+        "invitation": {
+            "subject": "Uitnodiging om mee te doen met Mealie",
+            "header_text": "Je bent uitgenodigd!",
+            "message_top": "Je bent uitgenodigd om mee te doen met Mealie.",
+            "message_bottom": "Klik op de knop hierboven om de uitnodiging te accepteren.",
+            "button_text": "Uitnodiging accepteren"
+        },
+        "test": {
+            "subject": "Test e-mail van Mealie",
+            "header_text": "Test e-mail",
+            "message_top": "Dit is een test e-mail.",
+            "message_bottom": "Klik op de knop hierboven om de e-mail te testen.",
+            "button_text": "Mealie openen"
+        }
     }
 }

@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "يجب أن تكون أسماء الوصفات فريدة",
+        "recipe-created": "تم إنشاء الوصفة",
+        "recipe-image-deleted": "Recipe image deleted",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "كوب 1 طحين",
+            "step-text": "تدعم خطوات الوصفة بالإضافة إلى الحقول الأخرى في صفحة الوصفة صياغة تخفيض السعر. **أضف رابطًا** [الرابط الخاص بي](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "تصنع",
+            "serves": "يكفي ل",
+            "serving": "حصة الطعام",
+            "servings": "حصص الطعام",
+            "yield": "العائد",
+            "yields": "العائد"
         }
     },
     "mealplan": {
@@ -19,30 +29,55 @@
         "ldap-update-password-unavailable": "غير قادر على تحديث كلمة المرور، المستخدم يتم التحكم به بواسطة LDAP"
     },
     "group": {
-        "report-deleted": "تم حذف التقرير"
+        "report-deleted": "تم حذف التقرير."
     },
     "exceptions": {
-        "permission_denied": "لا يوجد لديك صلاحيات كافية لتفيذ هذا الإجراء",
+        "permission_denied": "لا يوجد لديك صلاحيات كافية لتنفيذ هذا الإجراء",
+        "recursive-recipe-link": "A recipe cannot reference itself, either directly or indirectly",
         "no-entry-found": "لم يتم العثور على الصفحة المطلوبة",
         "integrity-error": "خطأ في سلامة قاعدة البيانات",
-        "username-conflict-error": "اسم المستخدم هذا مستخدم بالفعل",
+        "username-conflict-error": "اسم المستخدم هذا مستخدم مسبقاً",
         "email-conflict-error": "هذا البريد مستخدم مسبقاً"
     },
     "notifications": {
         "generic-created": "تم إنشاء {name}",
         "generic-updated": "تم تحديث {name}",
-        "generic-created-with-url": "تم إنشاء {name} ، {url}",
+        "generic-created-with-url": "تم إنشاء {name}، {url}",
         "generic-updated-with-url": "{name} تم تحديثه، {url}",
         "generic-duplicated": "تم تكرار {name}",
-        "generic-deleted": "تم حذف {name}"
+        "generic-deleted": "تم حذف {name}",
+        "logged-out": "Logged out"
     },
     "datetime": {
-        "year": "year|years",
-        "day": "day|days",
-        "hour": "hour|hours",
-        "minute": "minute|minutes",
-        "second": "second|seconds",
-        "millisecond": "millisecond|milliseconds",
-        "microsecond": "microsecond|microseconds"
+        "year": "سنة|سنوات",
+        "day": "يوم|أيام",
+        "hour": "ساعة|ساعات",
+        "minute": "دقيقة|دقائق",
+        "second": "ثانية|ثواني",
+        "millisecond": "مللي ثانية|مللي ثانية",
+        "microsecond": "مكرو ثانية|مكرو ثانية"
+    },
+    "emails": {
+        "password": {
+            "subject": "نسيت كلمة المرور",
+            "header_text": "نسيت كلمة المرور",
+            "message_top": "لقد طلبت إعادة تعيين كلمة المرور الخاصة بك.",
+            "message_bottom": "الرجاء النقر على الزر أعلاه لإعادة تعيين كلمة المرور الخاصة بك.",
+            "button_text": "إعادة ضبط كلمة المرور"
+        },
+        "invitation": {
+            "subject": "دعوة للانضمام إلى ميلي",
+            "header_text": "أنت مدعو!",
+            "message_top": "لقد تمت دعوتك للانضمام إلى ميلي.",
+            "message_bottom": "الرجاء النقر على الزر أعلاه لقبول الدعوة.",
+            "button_text": "قَبُول الدعوة"
+        },
+        "test": {
+            "subject": "بريد إلكتروني لاختبار ميلي",
+            "header_text": "بريد إلكتروني تجريبي",
+            "message_top": "هذا بريد إلكتروني اختباري.",
+            "message_bottom": "الرجاء النقر على الزر أعلاه لاختبار البريد الإلكتروني.",
+            "button_text": "فتح ميلي"
+        }
     }
 }

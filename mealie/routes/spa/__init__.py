@@ -1,6 +1,8 @@
+import html
 import json
 import pathlib
 from dataclasses import dataclass
+from typing import Any
 
 from bs4 import BeautifulSoup
 from fastapi import Depends, FastAPI, Response
@@ -24,6 +26,9 @@ class MetaTag:
     property_name: str
     content: str
 
+    def __post_init__(self):
+        self.content = escape(self.content)  # escape HTML to prevent XSS attacks
+
 
 class SPAStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
@@ -42,22 +47,45 @@ __app_settings = get_app_settings()
 __contents = ""
 
 
+def escape(content: Any) -> Any:
+    if isinstance(content, str):
+        return html.escape(content)
+    elif isinstance(content, list | tuple | set):
+        return [escape(item) for item in content]
+    elif isinstance(content, dict):
+        return {escape(k): escape(v) for k, v in content.items()}
+    else:
+        return content
+
+
 def inject_meta(contents: str, tags: list[MetaTag]) -> str:
     soup = BeautifulSoup(contents, "lxml")
     scraped_meta_tags = soup.find_all("meta")
 
     tags_by_hid = {tag.hid: tag for tag in tags}
-    for scraped_meta_tag in scraped_meta_tags:
-        try:
-            scraped_hid = scraped_meta_tag["data-hid"]
-        except KeyError:
-            continue
+    tags_by_property = {tag.property_name: tag for tag in tags}
 
-        if not (matched_tag := tags_by_hid.pop(scraped_hid, None)):
+    for scraped_meta_tag in scraped_meta_tags:
+        # Try to match by data-hid first
+        scraped_hid = scraped_meta_tag.get("data-hid")
+        matched_tag = tags_by_hid.pop(scraped_hid, None) if scraped_hid else None
+
+        # If no match by data-hid, try matching by property name
+        if not matched_tag:
+            scraped_property = scraped_meta_tag.get("property")
+            matched_tag = tags_by_property.get(scraped_property) if scraped_property else None
+            if matched_tag:
+                tags_by_hid.pop(matched_tag.hid, None)
+                tags_by_property.pop(scraped_property, None)
+
+        if not matched_tag:
             continue
 
         scraped_meta_tag["property"] = matched_tag.property_name
         scraped_meta_tag["content"] = matched_tag.content
+        # Add data-hid if it doesn't exist
+        if "data-hid" not in scraped_meta_tag.attrs:
+            scraped_meta_tag["data-hid"] = matched_tag.hid
 
     # add any tags we didn't find
     if soup.html and soup.html.head:
@@ -80,55 +108,46 @@ def content_with_meta(group_slug: str, recipe: Recipe) -> str:
     # Inject meta tags
     recipe_url = f"{__app_settings.BASE_URL}/g/{group_slug}/r/{recipe.slug}"
     if recipe.image:
-        image_url = (
-            f"{__app_settings.BASE_URL}/api/media/recipes/{recipe.id}/images/original.webp?version={recipe.image}"
-        )
+        image_url = f"{__app_settings.BASE_URL}/api/media/recipes/{recipe.id}/images/original.webp?version={escape(recipe.image)}"
     else:
         image_url = "https://raw.githubusercontent.com/mealie-recipes/mealie/9571816ac4eed5beacfc0abf6c03eff1427fd0eb/frontend/static/icons/android-chrome-512x512.png"
 
     ingredients: list[str] = []
-    if recipe.settings.disable_amount:  # type: ignore
-        ingredients = [i.note for i in recipe.recipe_ingredient if i.note]
+    for ing in recipe.recipe_ingredient:
+        s = ""
+        if ing.quantity:
+            s += f"{ing.quantity} "
+        if ing.unit:
+            s += f"{ing.unit.name} "
+        if ing.food:
+            s += f"{ing.food.name} "
+        if ing.note:
+            s += f"{ing.note}"
 
-    else:
-        for ing in recipe.recipe_ingredient:
-            s = ""
-            if ing.quantity:
-                s += f"{ing.quantity} "
-            if ing.unit:
-                s += f"{ing.unit.name} "
-            if ing.food:
-                s += f"{ing.food.name} "
-            if ing.note:
-                s += f"{ing.note}"
+        ingredients.append(escape(s))
 
-            ingredients.append(s)
+    nutrition: dict[str, str | None] = recipe.nutrition.model_dump(by_alias=True) if recipe.nutrition else {}
+    for k, v in nutrition.items():
+        if v:
+            nutrition[k] = escape(v)
 
-    nutrition: dict[str, str | None] = {}
-    if recipe.nutrition:
-        nutrition["calories"] = recipe.nutrition.calories
-        nutrition["fatContent"] = recipe.nutrition.fat_content
-        nutrition["fiberContent"] = recipe.nutrition.fiber_content
-        nutrition["proteinContent"] = recipe.nutrition.protein_content
-        nutrition["carbohydrateContent"] = recipe.nutrition.carbohydrate_content
-        nutrition["sodiumContent"] = recipe.nutrition.sodium_content
-        nutrition["sugarContent"] = recipe.nutrition.sugar_content
-
-    as_schema_org = {
+    as_schema_org: dict[str, Any] = {
         "@context": "https://schema.org",
         "@type": "Recipe",
-        "name": recipe.name,
-        "description": recipe.description,
+        "name": escape(recipe.name),
+        "description": escape(recipe.description),
         "image": [image_url],
         "datePublished": recipe.created_at,
-        "prepTime": recipe.prep_time,
-        "cookTime": recipe.cook_time,
-        "totalTime": recipe.total_time,
-        "recipeYield": recipe.recipe_yield,
+        "prepTime": escape(recipe.prep_time),
+        "cookTime": escape(recipe.cook_time),
+        "totalTime": escape(recipe.total_time),
+        "recipeYield": escape(recipe.recipe_yield_display),
         "recipeIngredient": ingredients,
-        "recipeInstructions": [i.text for i in recipe.recipe_instructions] if recipe.recipe_instructions else [],
-        "recipeCategory": [c.name for c in recipe.recipe_category] if recipe.recipe_category else [],
-        "keywords": [t.name for t in recipe.tags] if recipe.tags else [],
+        "recipeInstructions": [escape(i.text) for i in recipe.recipe_instructions]
+        if recipe.recipe_instructions
+        else [],
+        "recipeCategory": [escape(c.name) for c in recipe.recipe_category] if recipe.recipe_category else [],
+        "keywords": [escape(t.name) for t in recipe.tags] if recipe.tags else [],
         "nutrition": nutrition,
     }
 
@@ -162,15 +181,16 @@ def serve_recipe_with_meta_public(
     session: Session = Depends(generate_session),
 ):
     try:
-        repos = AllRepositories(session)
-        group = repos.groups.get_by_slug_or_id(group_slug)
+        public_repos = AllRepositories(session)
+        group = public_repos.groups.get_by_slug_or_id(group_slug)
 
-        if not group or group.preferences.private_group:  # type: ignore
+        if not (group and group.preferences) or group.preferences.private_group:
             return response_404()
 
-        recipe = repos.recipes.by_group(group.id).get_one(recipe_slug)
+        group_repos = AllRepositories(session, group_id=group.id, household_id=None)
+        recipe = group_repos.recipes.get_one(recipe_slug)
 
-        if not recipe or not recipe.settings.public:  # type: ignore
+        if not (recipe and recipe.settings) or not recipe.settings.public:
             return response_404()
 
         # Inject meta tags
@@ -189,9 +209,9 @@ async def serve_recipe_with_meta(
         return serve_recipe_with_meta_public(group_slug, recipe_slug, session)
 
     try:
-        repos = AllRepositories(session)
+        group_repos = AllRepositories(session, group_id=user.group_id, household_id=None)
 
-        recipe = repos.recipes.by_group(user.group_id).get_one(recipe_slug, "slug")
+        recipe = group_repos.recipes.get_one(recipe_slug, "slug")
         if recipe is None:
             return response_404()
 
@@ -203,8 +223,8 @@ async def serve_recipe_with_meta(
 
 async def serve_shared_recipe_with_meta(group_slug: str, token_id: str, session: Session = Depends(generate_session)):
     try:
-        repos = AllRepositories(session)
-        token_summary = repos.recipe_share_tokens.get_one(token_id)
+        public_repos = AllRepositories(session, group_id=None)
+        token_summary = public_repos.recipe_share_tokens.get_one(token_id)
         if token_summary is None:
             raise Exception("Token Not Found")
 
@@ -221,6 +241,6 @@ def mount_spa(app: FastAPI):
     global __contents
     __contents = pathlib.Path(__app_settings.STATIC_FILES).joinpath("index.html").read_text()
 
-    app.get("/g/{group_slug}/r/{recipe_slug}")(serve_recipe_with_meta)
-    app.get("/g/{group_slug}/shared/r/{token_id}")(serve_shared_recipe_with_meta)
+    app.get("/g/{group_slug}/r/{recipe_slug}", include_in_schema=False)(serve_recipe_with_meta)
+    app.get("/g/{group_slug}/shared/r/{token_id}", include_in_schema=False)(serve_shared_recipe_with_meta)
     app.mount("/", SPAStaticFiles(directory=__app_settings.STATIC_FILES, html=True), name="spa")

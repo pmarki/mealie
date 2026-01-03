@@ -1,54 +1,59 @@
-import { IncomingMessage } from "connect";
-import { useDark } from "@vueuse/core";
-import { useContext } from "@nuxtjs/composition-api";
+import { useDark, useToggle } from "@vueuse/core";
+import type { FilterFunction } from "vuetify";
 
 export const useToggleDarkMode = () => {
   const isDark = useDark();
-  const { $vuetify } = useContext();
+  const toggleDark = useToggle(isDark);
 
-  function toggleDark() {
-    isDark.value = !$vuetify.theme.dark;
-    $vuetify.theme.dark = !$vuetify.theme.dark;
-  }
-
-  return toggleDark;
+  return () => toggleDark();
 };
 
 export const useAsyncKey = function () {
-  return String(Date.now());
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
 export const titleCase = function (str: string) {
   return str
     .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 };
 
-export function detectServerBaseUrl(req?: IncomingMessage | null) {
-  if (!req || req === undefined) {
+const replaceAllBuilder = (map: Map<string, string>): ((str: string) => string) => {
+  const re = new RegExp(Array.from(map.keys()).join("|"), "gi");
+  return str => str.replace(re, matched => map.get(matched)!);
+};
+
+const normalizeLigatures = replaceAllBuilder(new Map([
+  ["œ", "oe"],
+  ["æ", "ae"],
+  ["ĳ", "ij"],
+  ["ﬀ", "ff"],
+  ["ﬁ", "fi"],
+  ["ﬂ", "fl"],
+  ["ﬆ", "st"],
+]));
+
+export const normalize = (str: string) => {
+  if (!str) {
     return "";
   }
-  if (req.headers.referer) {
-    const url = new URL(req.headers.referer);
-    return `${url.protocol}//${url.host}`;
-  } else if (req.headers.host) {
-    // TODO Socket.encrypted doesn't exist. What is needed here?
-    // @ts-ignore See above
-    const protocol = req.socket.encrypted ? "https:" : "http:";
-    return `${protocol}//${req.headers.host}`;
-  } else if (req.socket.remoteAddress) {
-    // @ts-ignore See above
-    const protocol = req.socket.encrypted ? "https:" : "http:";
-    return `${protocol}//${req.socket.localAddress || ""}:${req.socket.localPort || ""}`;
-  }
 
-  return "";
-}
+  let normalized = str.normalize("NFKD").toLowerCase();
+  normalized = normalized.replace(/\p{Diacritic}/gu, "");
+  normalized = normalizeLigatures(normalized);
+  return normalized;
+};
+
+export const normalizeFilter: FilterFunction = (value: string, query: string) => {
+  const normalizedValue = normalize(value);
+  const normalizeQuery = normalize(query);
+  return normalizedValue.includes(normalizeQuery);
+};
 
 export function uuid4() {
-  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
-    (parseInt(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (parseInt(c) / 4)))).toString(16)
+  return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+    (parseInt(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (parseInt(c) / 4)))).toString(16),
   );
 }
 
@@ -61,7 +66,8 @@ export function deepCopy<T>(obj: T): T {
       if (obj === null) {
         // null => null
         rv = null;
-      } else {
+      }
+      else {
         switch (Object.prototype.toString.call(obj)) {
           case "[object Array]":
             // It's an array, create a new array with
@@ -81,7 +87,6 @@ export function deepCopy<T>(obj: T): T {
             // Some other kind of object, deep-copy its
             // properties into a new object
             rv = Object.keys(obj).reduce(function (prev, key) {
-              // @ts-ignore This is hard to make type-safe
               prev[key] = deepCopy(obj[key]);
               return prev;
             }, {});

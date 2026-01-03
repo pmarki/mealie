@@ -1,101 +1,140 @@
 {
     "teaspoon": {
-        "name": "teaspoon",
+        "name": "tējkarote",
+        "plural_name": "tējkarotes",
         "description": "",
-        "abbreviation": "tsp"
+        "abbreviation": "tējk"
     },
     "tablespoon": {
-        "name": "tablespoon",
+        "name": "ēdamkarote",
+        "plural_name": "ēdamkarotes",
         "description": "",
-        "abbreviation": "tbsp"
+        "abbreviation": "ēdamk"
     },
     "cup": {
-        "name": "cup",
+        "name": "krūze",
+        "plural_name": "krūzes",
         "description": "",
-        "abbreviation": "cup"
+        "abbreviation": "c"
     },
     "fluid-ounce": {
-        "name": "fluid ounce",
+        "name": "šķidruma unce",
+        "plural_name": "šķidruma unces",
         "description": "",
         "abbreviation": "fl oz"
     },
     "pint": {
-        "name": "pint",
+        "name": "pinte",
+        "plural_name": "pintes",
         "description": "",
         "abbreviation": "pt"
     },
     "quart": {
-        "name": "quart",
+        "name": "ceturtdaļa",
+        "plural_name": "ceturtdaļas",
         "description": "",
         "abbreviation": "qt"
     },
     "gallon": {
-        "name": "gallon",
+        "name": "galons",
+        "plural_name": "galoni",
         "description": "",
         "abbreviation": "gal"
     },
     "milliliter": {
-        "name": "milliliter",
+        "name": "mililitrs",
+        "plural_name": "mililitri",
         "description": "",
         "abbreviation": "ml"
     },
     "liter": {
-        "name": "liter",
+        "name": "litrs",
+        "plural_name": "litri",
         "description": "",
         "abbreviation": "l"
     },
     "pound": {
-        "name": "pound",
+        "name": "mārciņa",
+        "plural_name": "mārciņas",
         "description": "",
-        "abbreviation": "lb"
+        "abbreviation": "lb",
+        "plural_abbreviation": "lbs"
     },
     "ounce": {
-        "name": "ounce",
+        "name": "unce",
+        "plural_name": "unces",
         "description": "",
-        "abbreviation": "oz"
+        "abbreviation": "unce"
     },
     "gram": {
-        "name": "gram",
+        "name": "grams",
+        "plural_name": "grami",
         "description": "",
         "abbreviation": "g"
     },
     "kilogram": {
-        "name": "kilogram",
+        "name": "kilograms",
+        "plural_name": "kilogrami",
         "description": "",
         "abbreviation": "kg"
     },
     "milligram": {
-        "name": "milligram",
+        "name": "miligrams",
+        "plural_name": "miligrami",
         "description": "",
         "abbreviation": "mg"
     },
     "splash": {
-        "name": "splash",
+        "name": "šļakatas",
+        "plural_name": "šļakatas",
         "description": "",
         "abbreviation": ""
     },
     "dash": {
-        "name": "dash",
+        "name": "domuzīme",
+        "plural_name": "domuzīmes",
         "description": "",
         "abbreviation": ""
     },
     "serving": {
-        "name": "serving",
+        "name": "porcija",
+        "plural_name": "porcijas",
         "description": "",
         "abbreviation": ""
     },
     "head": {
-        "name": "head",
+        "name": "galva",
+        "plural_name": "galvas",
         "description": "",
         "abbreviation": ""
     },
     "clove": {
-        "name": "clove",
+        "name": "krustnagliņa",
+        "plural_name": "krustnagliņas",
         "description": "",
         "abbreviation": ""
     },
     "can": {
-        "name": "can",
+        "name": "bundža",
+        "plural_name": "bundžas",
+        "description": "",
+        "abbreviation": ""
+    },
+    "bunch": {
+        "name": "ķekars",
+        "plural_name": "ķekari",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pack": {
+        "name": "iepakojums",
+        "plural_name": "iepakojumi",
+        "description": "",
+        "abbreviation": ""
+    },
+    "pinch": {
+        "name": "šķipsniņa",
+        "plural_name": "šķipsnas",
         "description": "",
         "abbreviation": ""
     }

@@ -25,7 +25,7 @@ router = APIRouter(prefix="/foods", tags=["Recipes: Foods"], route_class=MealieC
 class IngredientFoodsController(BaseUserController):
     @cached_property
     def repo(self):
-        return self.repos.ingredient_foods.by_group(self.group_id)
+        return self.repos.ingredient_foods
 
     @cached_property
     def mixins(self):
@@ -34,15 +34,6 @@ class IngredientFoodsController(BaseUserController):
             self.logger,
             self.registered_exceptions,
         )
-
-    @router.put("/merge", response_model=SuccessResponse)
-    def merge_one(self, data: MergeFood):
-        try:
-            self.repo.merge(data.from_food, data.to_food)
-            return SuccessResponse.respond("Successfully merged foods")
-        except Exception as e:
-            self.logger.error(e)
-            raise HTTPException(500, "Failed to merge foods") from e
 
     @router.get("", response_model=IngredientFoodPagination)
     def get_all(self, q: PaginationQuery = Depends(PaginationQuery), search: str | None = None):
@@ -60,12 +51,22 @@ class IngredientFoodsController(BaseUserController):
         save_data = mapper.cast(data, SaveIngredientFood, group_id=self.group_id)
         return self.mixins.create_one(save_data)
 
+    @router.put("/merge", response_model=SuccessResponse)
+    def merge_one(self, data: MergeFood):
+        try:
+            self.repo.merge(data.from_food, data.to_food)
+            return SuccessResponse.respond("Successfully merged foods")
+        except Exception as e:
+            self.logger.error(e)
+            raise HTTPException(500, "Failed to merge foods") from e
+
     @router.get("/{item_id}", response_model=IngredientFood)
     def get_one(self, item_id: UUID4):
         return self.mixins.get_one(item_id)
 
     @router.put("/{item_id}", response_model=IngredientFood)
     def update_one(self, item_id: UUID4, data: CreateIngredientFood):
+        data = mapper.cast(data, SaveIngredientFood, group_id=self.group_id)
         return self.mixins.update_one(data, item_id)
 
     @router.delete("/{item_id}", response_model=IngredientFood)

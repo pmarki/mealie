@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from pydantic import UUID4, ConfigDict, Field
 from sqlalchemy.orm import selectinload
@@ -11,12 +11,16 @@ from .recipe import Recipe
 
 
 def defaut_expires_at_time() -> datetime:
-    return datetime.utcnow() + timedelta(days=30)
+    return datetime.now(UTC) + timedelta(days=30)
 
 
 class RecipeShareTokenCreate(MealieModel):
     recipe_id: UUID4
     expires_at: datetime = Field(default_factory=defaut_expires_at_time)
+
+    @property
+    def is_expired(self) -> bool:
+        return self.expires_at < datetime.now(UTC)
 
 
 class RecipeShareTokenSave(RecipeShareTokenCreate):

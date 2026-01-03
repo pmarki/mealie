@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Numele rețetei trebuie să fie unic",
+        "recipe-created": "Rețetă creată",
+        "recipe-image-deleted": "Imaginea rețetei a fost ștearsă",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "1 Cană de Făină",
+            "step-text": "Pașii rețetei precum și alte domenii din sintaxa markdown de pe pagina de rețetă.\n\n**Adăugați un link**\n\n[Link-ul meu](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Creează",
+            "serves": "Servește",
+            "serving": "Porție",
+            "servings": "Porții",
+            "yield": "Recoltă",
+            "yields": "Producţii"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Nu aveți permisiunile necesare pentru a efectua această acțiune",
+        "recursive-recipe-link": "O rețetă nu poate să se refere la ea însăși, nici direct, nici indirect",
         "no-entry-found": "Pagina solicitată nu a fost găsită",
         "integrity-error": "Eroare la integritatea bazei de date",
         "username-conflict-error": "Acest nume de utilizator deja există",
@@ -34,15 +45,39 @@
         "generic-created-with-url": "{name} a fost creat, {url}",
         "generic-updated-with-url": "{name} a fost actualizat, {url}",
         "generic-duplicated": "{name} a fost duplicat",
-        "generic-deleted": "{name} a fost șters"
+        "generic-deleted": "{name} a fost șters",
+        "logged-out": "Deconectat"
     },
     "datetime": {
-        "year": "year|years",
-        "day": "day|days",
-        "hour": "hour|hours",
-        "minute": "minute|minutes",
-        "second": "second|seconds",
-        "millisecond": "millisecond|milliseconds",
-        "microsecond": "microsecond|microseconds"
+        "year": "an|ani",
+        "day": "zi|zile",
+        "hour": "oră|ore",
+        "minute": "minut|minute",
+        "second": "secundă|secunde",
+        "millisecond": "milisecundă|milisecunde",
+        "microsecond": "microsecundă|microsecunde"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie Parolă Uitată",
+            "header_text": "Am uitat parola",
+            "message_top": "Ai solicitat resetarea parolei.",
+            "message_bottom": "Vă rugăm să faceţi clic pe butonul de mai sus pentru a reseta parola.",
+            "button_text": "Resetare parolă"
+        },
+        "invitation": {
+            "subject": "Invitație de a te alătura Mealie",
+            "header_text": "Ești invitat!",
+            "message_top": "Ai fost invitat să te alături lui Mealie.",
+            "message_bottom": "Vă rugăm să faceţi clic pe butonul de mai sus pentru a accepta invitaţia.",
+            "button_text": "Acceptă invitația"
+        },
+        "test": {
+            "subject": "E-mail test Mealie",
+            "header_text": "Email de test",
+            "message_top": "Acesta este un e-mail de test.",
+            "message_bottom": "Vă rugăm să faceţi clic pe butonul de mai sus pentru a testa e-mailul.",
+            "button_text": "Deschide Mealie"
+        }
     }
 }

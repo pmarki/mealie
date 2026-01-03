@@ -3,7 +3,7 @@ from functools import lru_cache
 
 import requests
 
-_LAST_RESET = None
+_LAST_RESET: datetime.datetime | None = None
 
 
 @lru_cache(maxsize=1)
@@ -15,7 +15,7 @@ def get_latest_github_release() -> str:
         str: The latest release from GitHub.
     """
 
-    url = "https://api.github.com/repos/hay-kot/mealie/releases/latest"
+    url = "https://api.github.com/repos/mealie-recipes/mealie/releases/latest"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()["tag_name"]
@@ -32,7 +32,7 @@ def get_latest_version() -> str:
 
     global _LAST_RESET
 
-    now = datetime.datetime.now()
+    now = datetime.datetime.now(datetime.UTC)
 
     if not _LAST_RESET or now - _LAST_RESET > datetime.timedelta(days=MAX_DAYS_OLD):
         _LAST_RESET = now

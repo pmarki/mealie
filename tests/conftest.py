@@ -3,10 +3,24 @@ from collections.abc import Generator
 
 from pytest import MonkeyPatch, fixture
 
+
+def _clean_temp_dir():
+    with contextlib.suppress(Exception):
+        temp_dir = Path(__file__).parent / ".temp"
+
+        if temp_dir.exists():
+            import shutil
+
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+_clean_temp_dir()
+
 mp = MonkeyPatch()
 mp.setenv("PRODUCTION", "True")
 mp.setenv("TESTING", "True")
 mp.setenv("ALLOW_SIGNUP", "True")
+mp.setenv("OPENAI_API_KEY", "dummy-api-key")
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -53,11 +67,6 @@ def test_image_png():
 @fixture(scope="session", autouse=True)
 def global_cleanup() -> Generator[None, None, None]:
     """Purges the .temp directory used for testing"""
+
     yield None
-    with contextlib.suppress(Exception):
-        temp_dir = Path(__file__).parent / ".temp"
-
-        if temp_dir.exists():
-            import shutil
-
-            shutil.rmtree(temp_dir, ignore_errors=True)
+    _clean_temp_dir()

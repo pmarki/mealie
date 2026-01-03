@@ -4,7 +4,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from mealie.core.config import get_app_settings
-from mealie.repos.repository_factory import AllRepositories
 from mealie.services.user_services.user_service import UserService
 from tests.utils import api_routes
 from tests.utils.factories import random_string
@@ -45,11 +44,12 @@ def test_get_logged_in_user_invalid_token(api_client: TestClient, use_token: boo
     assert response.status_code == 401
 
 
-def test_user_lockout_after_bad_attemps(api_client: TestClient, unique_user: TestUser, database: AllRepositories):
+def test_user_lockout_after_bad_attemps(api_client: TestClient, unique_user: TestUser):
     """
     if the user has more than 5 bad login attempts the user will be locked out for 4 hours
     This only applies if there is a user in the database with the same username
     """
+    database = unique_user.repos
     settings = get_app_settings()
 
     for _ in range(settings.SECURITY_MAX_LOGIN_ATTEMPTS):
@@ -234,7 +234,10 @@ def test_ldap_user_login_simple_filter(api_client: TestClient):
 @pytest.mark.skipif(not os.environ.get("GITHUB_ACTIONS", False), reason="requires ldap service in github actions")
 def test_ldap_user_login_complex_filter(api_client: TestClient):
     settings = get_app_settings()
-    settings.LDAP_USER_FILTER = "(&(objectClass=inetOrgPerson)(|(memberOf=cn=ship_crew,ou=people,dc=planetexpress,dc=com)(memberOf=cn=admin_staff,ou=people,dc=planetexpress,dc=com)))"
+    settings.LDAP_USER_FILTER = (
+        "(&(objectClass=inetOrgPerson)(|(memberOf=cn=ship_crew,ou=people,dc=planetexpress,dc=com)"
+        "(memberOf=cn=admin_staff,ou=people,dc=planetexpress,dc=com)))"
+    )
 
     form_data = {"username": "professor", "password": "professor"}
     response = api_client.post(api_routes.auth_token, data=form_data)

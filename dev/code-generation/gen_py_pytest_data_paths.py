@@ -1,3 +1,4 @@
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,7 +68,7 @@ def rename_non_compliant_paths():
     kabab case.
     """
 
-    ignore_files = ["DS_Store", ".gitkeep"]
+    ignore_files = ["DS_Store", ".gitkeep", "af-ZA.json", "en-US.json"]
 
     ignore_extensions = [".pyc", ".pyo", ".py"]
 
@@ -105,11 +106,15 @@ def main():
     # Flatten list of lists
     all_children = [item for sublist in all_children for item in sublist]
 
+    out_path = GENERATED / "__init__.py"
     render_python_template(
         TEMPLATE,
-        GENERATED / "__init__.py",
+        out_path,
         {"children": all_children},
     )
+
+    subprocess.run(["uv", "run", "ruff", "check", str(out_path), "--fix"])
+    subprocess.run(["uv", "run", "ruff", "format", str(out_path)])
 
 
 if __name__ == "__main__":

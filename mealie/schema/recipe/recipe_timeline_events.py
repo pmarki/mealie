@@ -1,12 +1,17 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Annotated
 
 from pydantic import UUID4, ConfigDict, Field
+from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.interfaces import LoaderOption
 
 from mealie.core.config import get_app_dirs
-from mealie.schema._mealie.mealie_model import MealieModel
+from mealie.db.models.recipe.recipe_timeline import RecipeTimelineEvent
+from mealie.db.models.users.users import User
+from mealie.schema._mealie import MealieModel
+from mealie.schema._mealie.mealie_model import UpdatedAtField
 from mealie.schema.recipe.recipe import Recipe
 from mealie.schema.response.pagination import PaginationBase
 
@@ -35,7 +40,7 @@ class RecipeTimelineEventIn(MealieModel):
     message: str | None = Field(None, alias="eventMessage")
     image: Annotated[TimelineEventImage | None, Field(validate_default=True)] = TimelineEventImage.does_not_have_image
 
-    timestamp: datetime = datetime.now()
+    timestamp: datetime = datetime.now(UTC)
     model_config = ConfigDict(use_enum_values=True)
 
 
@@ -52,9 +57,19 @@ class RecipeTimelineEventUpdate(MealieModel):
 
 class RecipeTimelineEventOut(RecipeTimelineEventCreate):
     id: UUID4
+    group_id: UUID4
+    household_id: UUID4
+
     created_at: datetime
-    update_at: datetime
+    updated_at: datetime = UpdatedAtField(...)
     model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    def loader_options(cls) -> list[LoaderOption]:
+        return [
+            joinedload(RecipeTimelineEvent.recipe),
+            joinedload(RecipeTimelineEvent.user).load_only(User.household_id, User.group_id),
+        ]
 
     @classmethod
     def image_dir_from_id(cls, recipe_id: UUID4 | str, timeline_event_id: UUID4 | str) -> Path:

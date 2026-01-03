@@ -4,9 +4,19 @@
     },
     "recipe": {
         "unique-name-error": "Les noms de recette doivent être uniques",
+        "recipe-created": "Recette créée",
+        "recipe-image-deleted": "L'image de la recette a été supprimée",
         "recipe-defaults": {
             "ingredient-note": "1 tasse de Farine",
             "step-text": "Les étapes de la recette ainsi que les autres champs de la page de recette supportent la syntaxe markdown.\n\n**Ajouter un lien**\n\n[Mon lien](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Fait",
+            "serves": "Sert",
+            "serving": "Portion",
+            "servings": "Portions",
+            "yield": "Rendement",
+            "yields": "Rendements"
         }
     },
     "mealplan": {
@@ -23,6 +33,7 @@
     },
     "exceptions": {
         "permission_denied": "Vous n'avez pas le droit d'exécuter cette action",
+        "recursive-recipe-link": "Une recette ne peut pas se référencer elle-même, ni directement, ni indirectement",
         "no-entry-found": "La ressource demandée n'a pas été trouvée",
         "integrity-error": "Erreur d'intégrité de la base de données",
         "username-conflict-error": "Ce nom d'utilisateur est déjà pris",
@@ -34,7 +45,8 @@
         "generic-created-with-url": "{name} a été créé, {url}",
         "generic-updated-with-url": "{name} a été mis à jour, {url}",
         "generic-duplicated": "{name} a été dupliqué",
-        "generic-deleted": "{name} a été supprimé"
+        "generic-deleted": "{name} a été supprimé",
+        "logged-out": "Déconnecté(e)"
     },
     "datetime": {
         "year": "année|années",
@@ -44,5 +56,28 @@
         "second": "seconde|secondes",
         "millisecond": "milliseconde|millisecondes",
         "microsecond": "microseconde|microsecondes"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mot de passe oublié pour Mealie",
+            "header_text": "Mot de passe oublié",
+            "message_top": "Vous avez demandé de réinitialiser votre mot de passe.",
+            "message_bottom": "Veuillez cliquer sur le bouton ci-dessus pour réinitialiser votre mot de passe.",
+            "button_text": "Réinitialiser le mot de passe"
+        },
+        "invitation": {
+            "subject": "Invitation à rejoindre Mealie",
+            "header_text": "Vous êtes invité!",
+            "message_top": "Vous avez été invité à rejoindre Mealie.",
+            "message_bottom": "Veuillez cliquer sur le bouton ci-dessus pour accepter l'invitation.",
+            "button_text": "Accepter l'invitation"
+        },
+        "test": {
+            "subject": "Email de test Mealie",
+            "header_text": "Email de test",
+            "message_top": "Ceci est un email de test.",
+            "message_bottom": "Veuillez cliquer sur le bouton ci-dessus pour tester l'email.",
+            "button_text": "Ouvrir Mealie"
+        }
     }
 }

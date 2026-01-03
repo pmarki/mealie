@@ -1,9 +1,8 @@
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import jwt
-from fastapi import Request
 from sqlalchemy.orm.session import Session
 
 from mealie.core import root_logger
@@ -21,7 +20,7 @@ ALGORITHM = "HS256"
 logger = root_logger.get_logger("security")
 
 
-def get_auth_provider(session: Session, request: Request, data: CredentialsRequestForm) -> AuthProvider:
+def get_auth_provider(session: Session, data: CredentialsRequestForm) -> AuthProvider:
     settings = get_app_settings()
 
     credentials_request = CredentialsRequest(**data.__dict__)
@@ -43,7 +42,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     to_encode = data.copy()
     expires_delta = expires_delta or timedelta(hours=settings.TOKEN_TIME)
 
-    expire = datetime.now(timezone.utc) + expires_delta
+    expire = datetime.now(UTC) + expires_delta
 
     to_encode["exp"] = expire
     return jwt.encode(to_encode, settings.SECRET, algorithm=ALGORITHM)
@@ -51,11 +50,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 def create_file_token(file_path: Path) -> str:
     token_data = {"file": str(file_path)}
-    return create_access_token(token_data, expires_delta=timedelta(minutes=30))
-
-
-def create_recipe_slug_token(file_path: str | Path) -> str:
-    token_data = {"slug": str(file_path)}
     return create_access_token(token_data, expires_delta=timedelta(minutes=30))
 
 

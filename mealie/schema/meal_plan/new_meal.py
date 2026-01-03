@@ -8,8 +8,9 @@ from pydantic_core.core_schema import ValidationInfo
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.interfaces import LoaderOption
 
-from mealie.db.models.group import GroupMealPlan
+from mealie.db.models.household import GroupMealPlan
 from mealie.db.models.recipe import RecipeModel
+from mealie.db.models.users.users import User
 from mealie.schema._mealie import MealieModel
 from mealie.schema.recipe.recipe import RecipeSummary
 from mealie.schema.response.pagination import PaginationBase
@@ -20,6 +21,9 @@ class PlanEntryType(str, Enum):
     lunch = "lunch"
     dinner = "dinner"
     side = "side"
+    snack = "snack"
+    drink = "drink"
+    dessert = "dessert"
 
 
 class CreateRandomEntry(MealieModel):
@@ -46,16 +50,17 @@ class CreatePlanEntry(MealieModel):
 class UpdatePlanEntry(CreatePlanEntry):
     id: int
     group_id: UUID
-    user_id: UUID | None = None
+    user_id: UUID
 
 
 class SavePlanEntry(CreatePlanEntry):
     group_id: UUID
-    user_id: UUID | None = None
+    user_id: UUID
     model_config = ConfigDict(from_attributes=True)
 
 
 class ReadPlanEntry(UpdatePlanEntry):
+    household_id: UUID
     recipe: RecipeSummary | None = None
     model_config = ConfigDict(from_attributes=True)
 
@@ -65,6 +70,7 @@ class ReadPlanEntry(UpdatePlanEntry):
             selectinload(GroupMealPlan.recipe).joinedload(RecipeModel.recipe_category),
             selectinload(GroupMealPlan.recipe).joinedload(RecipeModel.tags),
             selectinload(GroupMealPlan.recipe).joinedload(RecipeModel.tools),
+            selectinload(GroupMealPlan.user).load_only(User.household_id),
         ]
 
 

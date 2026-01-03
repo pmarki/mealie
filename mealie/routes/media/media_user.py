@@ -4,11 +4,6 @@ from starlette.responses import FileResponse
 
 from mealie.schema.user import PrivateUser
 
-"""
-These routes are for development only! These assets are served by Caddy when not
-in development mode. If you make changes, be sure to test the production container.
-"""
-
 router = APIRouter(prefix="/users")
 
 

@@ -3,7 +3,7 @@ import unicodedata
 
 from pydantic import BaseModel, ConfigDict
 
-from .._helpers import check_char, move_parens_to_end
+from ..parser_utils import check_char, move_parens_to_end
 
 
 class BruteParsedIngredient(BaseModel):
@@ -122,7 +122,7 @@ def parse_ingredient(tokens) -> tuple[str, str]:
             # no opening bracket anywhere -> just ignore the last bracket
             ingredient, note = parse_ingredient_with_comma(tokens)
         else:
-            # opening bracket found -> split in ingredient and note, remove brackets from note  # noqa: E501
+            # opening bracket found -> split in ingredient and note, remove brackets from note
             note = " ".join(tokens[start:])[1:-1]
             ingredient = " ".join(tokens[:start])
     else:
@@ -194,7 +194,7 @@ def parse(ing_str, parser) -> BruteParsedIngredient:
         # try to parse as unit and ingredient (e.g. "a tblsp salt"), with unit in first three tokens
         # won't work for units that have spaces
         for index, token in enumerate(tokens[:3]):
-            if parser.find_unit_match(token):
+            if parser.data_matcher.find_unit_match(token):
                 unit = token
                 ingredient, note = parse_ingredient(tokens[index + 1 :])
                 break

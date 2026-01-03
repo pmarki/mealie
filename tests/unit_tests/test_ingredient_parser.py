@@ -1,12 +1,17 @@
-import shutil
+import asyncio
+import json
 from dataclasses import dataclass
-from fractions import Fraction
+from typing import cast
 
 import pytest
 from pydantic import UUID4
+from sqlalchemy.orm import Session
 
 from mealie.db.db_setup import session_context
+from mealie.repos.all_repositories import get_repositories
 from mealie.repos.repository_factory import AllRepositories
+from mealie.schema.openai.recipe_ingredient import OpenAIIngredient, OpenAIIngredients
+from mealie.schema.recipe.recipe import Recipe
 from mealie.schema.recipe.recipe_ingredient import (
     CreateIngredientFood,
     CreateIngredientFoodAlias,
@@ -20,8 +25,8 @@ from mealie.schema.recipe.recipe_ingredient import (
     SaveIngredientUnit,
 )
 from mealie.schema.user.user import GroupBase
+from mealie.services.openai import OpenAIService
 from mealie.services.parser_services import RegisteredParser, get_parser
-from mealie.services.parser_services.crfpp.processor import CRFIngredient, convert_list_to_crf_model
 from tests.utils.factories import random_int, random_string
 from tests.utils.fixture_schemas import TestUser
 
@@ -35,10 +40,6 @@ class TestIngredient:
     comments: str
 
 
-def crf_exists() -> bool:
-    return shutil.which("crf_test") is not None
-
-
 def build_parsed_ing(food: str | None, unit: str | None) -> ParsedIngredient:
     ing = RecipeIngredient(unit=None, food=None)
     if food:
@@ -50,15 +51,20 @@ def build_parsed_ing(food: str | None, unit: str | None) -> ParsedIngredient:
 
 
 @pytest.fixture()
-def unique_local_group_id(database: AllRepositories) -> UUID4:
-    return str(database.groups.create(GroupBase(name=random_string())).id)
+def unique_local_group_id(unfiltered_database: AllRepositories) -> UUID4:
+    return str(unfiltered_database.groups.create(GroupBase(name=random_string())).id)
+
+
+@pytest.fixture()
+def unique_db(session: Session, unique_local_group_id: str):
+    return get_repositories(session, group_id=unique_local_group_id)
 
 
 @pytest.fixture()
 def parsed_ingredient_data(
-    database: AllRepositories, unique_local_group_id: UUID4
+    unique_db: AllRepositories, unique_local_group_id: UUID4
 ) -> tuple[list[IngredientFood], list[IngredientUnit]]:
-    foods = database.ingredient_foods.create_many(
+    foods = unique_db.ingredient_foods.create_many(
         [
             SaveIngredientFood(name="potatoes", group_id=unique_local_group_id),
             SaveIngredientFood(name="onion", group_id=unique_local_group_id),
@@ -79,7 +85,7 @@ def parsed_ingredient_data(
     )
 
     foods.extend(
-        database.ingredient_foods.create_many(
+        unique_db.ingredient_foods.create_many(
             [
                 SaveIngredientFood(name=f"{random_string()} food", group_id=unique_local_group_id)
                 for _ in range(random_int(10, 15))
@@ -87,7 +93,7 @@ def parsed_ingredient_data(
         )
     )
 
-    units = database.ingredient_units.create_many(
+    units = unique_db.ingredient_units.create_many(
         [
             SaveIngredientUnit(name="Cups", group_id=unique_local_group_id),
             SaveIngredientUnit(name="Tablespoon", group_id=unique_local_group_id),
@@ -110,7 +116,7 @@ def parsed_ingredient_data(
     )
 
     units.extend(
-        database.ingredient_foods.create_many(
+        unique_db.ingredient_foods.create_many(
             [
                 SaveIngredientUnit(name=f"{random_string()} unit", group_id=unique_local_group_id)
                 for _ in range(random_int(10, 15))
@@ -119,32 +125,6 @@ def parsed_ingredient_data(
     )
 
     return foods, units
-
-
-# TODO - add more robust test cases
-test_ingredients = [
-    TestIngredient("½ cup all-purpose flour", 0.5, "cup", "all-purpose flour", ""),
-    TestIngredient("1 ½ teaspoons ground black pepper", 1.5, "teaspoon", "black pepper", "ground"),
-    TestIngredient("⅔ cup unsweetened flaked coconut", 0.667, "cup", "coconut", "unsweetened flaked"),
-    TestIngredient("⅓ cup panko bread crumbs", 0.333, "cup", "panko bread crumbs", ""),
-    # Small Fraction Tests - PR #1369
-    # Reported error is was for 1/8 - new lowest expected threshold is 1/32
-    TestIngredient("1/8 cup all-purpose flour", 0.125, "cup", "all-purpose flour", ""),
-    TestIngredient("1/32 cup all-purpose flour", 0.031, "cup", "all-purpose flour", ""),
-]
-
-
-@pytest.mark.skipif(not crf_exists(), reason="CRF++ not installed")
-def test_nlp_parser() -> None:
-    models: list[CRFIngredient] = convert_list_to_crf_model([x.input for x in test_ingredients])
-
-    # Iterate over models and test_ingredients to gather
-    for model, test_ingredient in zip(models, test_ingredients):
-        assert round(float(sum(Fraction(s) for s in model.qty.split())), 3) == pytest.approx(test_ingredient.quantity)
-
-        assert model.comment == test_ingredient.comments
-        assert model.name == test_ingredient.food
-        assert model.unit == test_ingredient.unit
 
 
 @pytest.mark.parametrize(
@@ -201,7 +181,6 @@ def test_nlp_parser() -> None:
             id="stalk bell peppers, cut in pieces",
         ),
         pytest.param("red pepper flakes", 0, "", "red pepper flakes", "", id="red pepper flakes"),
-        pytest.param("1 red pepper flakes", 1, "", "red pepper flakes", "", id="1 red pepper flakes"),
         pytest.param("1 bell peppers", 1, "", "bell peppers", "", id="1 bell peppers"),
         pytest.param("1 stalk bell peppers", 1, "Stalk", "bell peppers", "", id="1 big stalk bell peppers"),
         pytest.param("a big stalk bell peppers", 0, "Stalk", "bell peppers", "", id="a big stalk bell peppers"),
@@ -223,8 +202,9 @@ def test_brute_parser(
     comment: str,
 ):
     with session_context() as session:
+        loop = asyncio.get_event_loop()
         parser = get_parser(RegisteredParser.brute, unique_local_group_id, session)
-        parsed = parser.parse_one(input)
+        parsed = loop.run_until_complete(parser.parse_one(input))
         ing = parsed.ingredient
 
         if ing.quantity:
@@ -243,6 +223,46 @@ def test_brute_parser(
             assert ing.note == comment
         else:
             assert not comment
+
+
+@pytest.mark.parametrize(
+    "unit, food, expect_unit_match, expect_food_match, expected_avg",
+    [
+        pytest.param("Cups", "potatoes", True, True, 1.0, id="all matched"),
+        pytest.param("Cups", "veryuniquefood", True, False, 0.75, id="unit matched only"),
+        pytest.param("veryuniqueunit", "potatoes", False, True, 0.75, id="food matched only"),
+        pytest.param("veryuniqueunit", "veryuniquefood", False, False, 0.5, id="neither matched"),
+    ],
+)
+def test_brute_parser_confidence(
+    unit: str,
+    food: str,
+    expect_unit_match: bool,
+    expect_food_match: bool,
+    expected_avg: float,
+    unique_local_group_id: UUID4,
+    parsed_ingredient_data: tuple[list[IngredientFood], list[IngredientUnit]],
+):
+    input_str = f"1 {unit} {food}"
+
+    with session_context() as session:
+        original_loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            parser = get_parser(RegisteredParser.brute, unique_local_group_id, session)
+            parsed = loop.run_until_complete(parser.parse_one(input_str))
+        finally:
+            loop.close()
+            asyncio.set_event_loop(original_loop)
+
+        conf = parsed.confidence
+
+        assert conf.quantity == 1
+        assert conf.comment == 1
+        assert conf.unit == (1 if expect_unit_match or not unit else 0)
+        assert conf.food == (1 if expect_food_match or not food else 0)
+        assert conf.average == expected_avg
 
 
 @pytest.mark.parametrize(
@@ -414,10 +434,10 @@ def test_parser_ingredient_match(
 
         if expect_food_match:
             assert isinstance(parsed_ingredient.ingredient.food, IngredientFood)
+        elif parsed_ingredient.ingredient.food and parsed_ingredient.ingredient.food.name:
+            assert isinstance(parsed_ingredient.ingredient.food, CreateIngredientFood)
         else:
-            assert parsed_ingredient.ingredient.food is None or isinstance(
-                parsed_ingredient.ingredient.food, CreateIngredientFood
-            )
+            assert parsed_ingredient.ingredient.food is None
 
         if expected_unit_name:
             assert parsed_ingredient.ingredient.unit and parsed_ingredient.ingredient.unit.name == expected_unit_name
@@ -426,7 +446,284 @@ def test_parser_ingredient_match(
 
         if expect_unit_match:
             assert isinstance(parsed_ingredient.ingredient.unit, IngredientUnit)
+        elif parsed_ingredient.ingredient.unit and parsed_ingredient.ingredient.unit.name:
+            assert isinstance(parsed_ingredient.ingredient.unit, CreateIngredientUnit)
         else:
-            assert parsed_ingredient.ingredient.unit is None or isinstance(
-                parsed_ingredient.ingredient.unit, CreateIngredientUnit
+            assert parsed_ingredient.ingredient.unit is None
+
+
+def test_openai_parser(
+    unique_local_group_id: UUID4,
+    parsed_ingredient_data: tuple[list[IngredientFood], list[IngredientUnit]],  # required so database is populated
+    monkeypatch: pytest.MonkeyPatch,
+):
+    ingredient_count = random_int(10, 20)
+
+    async def mock_get_response(self, prompt: str, message: str, *args, **kwargs) -> str | None:
+        inputs = json.loads(message)
+        data = OpenAIIngredients(
+            ingredients=[
+                OpenAIIngredient(
+                    quantity=random_int(0, 10),
+                    unit=random_string(),
+                    food=random_string(),
+                    note=random_string(),
+                )
+                for input in inputs
+            ]
+        )
+        return data.model_dump_json()
+
+    monkeypatch.setattr(OpenAIService, "get_response", mock_get_response)
+
+    with session_context() as session:
+        loop = asyncio.get_event_loop()
+        parser = get_parser(RegisteredParser.openai, unique_local_group_id, session)
+
+        inputs = [random_string() for _ in range(ingredient_count)]
+        parsed = loop.run_until_complete(parser.parse(inputs))
+
+        # since OpenAI is mocked, we don't need to validate the data, we just need to make sure parsing works
+        # and that it preserves order
+        assert len(parsed) == ingredient_count
+        for input, output in zip(inputs, parsed, strict=True):
+            assert output.input == input
+
+
+def test_openai_parser_sanitize_output(
+    unique_local_group_id: UUID4,
+    unique_user: TestUser,
+    parsed_ingredient_data: tuple[list[IngredientFood], list[IngredientUnit]],  # required so database is populated
+    monkeypatch: pytest.MonkeyPatch,
+):
+    async def mock_get_response(self, prompt: str, message: str, *args, **kwargs) -> str | None:
+        data = OpenAIIngredients(
+            ingredients=[
+                OpenAIIngredient(
+                    quantity=random_int(0, 10),
+                    unit="",
+                    food="there is a null character here: \x00",
+                    note="",
+                )
+            ]
+        )
+        return data.model_dump_json()
+
+    monkeypatch.setattr(OpenAIService, "get_response", mock_get_response)
+
+    with session_context() as session:
+        loop = asyncio.get_event_loop()
+        parser = get_parser(RegisteredParser.openai, unique_local_group_id, session)
+
+        parsed = loop.run_until_complete(parser.parse([""]))
+        assert len(parsed) == 1
+        parsed_ing = cast(ParsedIngredient, parsed[0])
+        assert parsed_ing.ingredient.food
+        assert parsed_ing.ingredient.food.name == "there is a null character here: "
+
+        # Make sure we can create a recipe with this ingredient
+        assert isinstance(parsed_ing.ingredient.food, CreateIngredientFood)
+        food = unique_user.repos.ingredient_foods.create(
+            parsed_ing.ingredient.food.cast(SaveIngredientFood, group_id=unique_user.group_id)
+        )
+        parsed_ing.ingredient.food = food
+        unique_user.repos.recipes.create(
+            Recipe(
+                user_id=unique_user.user_id,
+                group_id=unique_user.group_id,
+                name=random_string(),
+                recipe_ingredient=[parsed_ing.ingredient],
             )
+        )
+
+
+@pytest.mark.parametrize(
+    "original_text,quantity,unit,food,note,qty_range,unit_range,food_range,note_range",
+    [
+        pytest.param(
+            "2 cups flour",
+            2.0,
+            "Cups",
+            "flour",
+            "",
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            id="perfect_match_all_components",
+        ),
+        pytest.param(
+            "2 cups flour",
+            3.0,
+            "Cups",
+            "flour",
+            "",
+            (0.0, 0.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            id="quantity_mismatch",
+        ),
+        pytest.param(
+            "2 cups flour",
+            2.0,
+            None,
+            "flour",
+            "",
+            (1.0, 1.0),
+            (0.4, 0.9),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            id="missing_unit_fallback",
+        ),
+        pytest.param(
+            "2 cups flour",
+            2.0,
+            "Cups",
+            None,
+            "",
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (0.4, 0.9),
+            (1.0, 1.0),
+            id="missing_food_fallback",
+        ),
+        pytest.param(
+            "2 cups flour sifted fresh",
+            2.0,
+            "Cups",
+            "flour",
+            "sifted fresh",
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (0.8, 1.0),
+            id="note_full_match",
+        ),
+        pytest.param(
+            "2 cups flour sifted",
+            2.0,
+            "Cups",
+            "flour",
+            "sifted chopped",
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (0.4, 0.6),
+            id="note_partial_match",
+        ),
+        pytest.param(
+            "2 cups flour",
+            2.0,
+            "Cups",
+            "flour",
+            "chopped minced",
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (0.0, 0.0),
+            id="note_no_match",
+        ),
+        pytest.param(
+            "1.5 tsp salt kosher",
+            1.0,
+            None,
+            None,
+            "kosher fine",
+            (0.0, 0.0),
+            (0.3, 0.7),
+            (0.3, 0.7),
+            (0.4, 0.6),
+            id="multiple_issues",
+        ),
+        pytest.param(
+            "",
+            1.0,
+            "Cups",
+            "flour",
+            "fresh",
+            (0.0, 0.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (0.0, 0.0),
+            id="empty_original_text",
+        ),
+        pytest.param(
+            "salt",
+            0.0,
+            None,
+            "salt",
+            "",
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            (1.0, 1.0),
+            id="zero_quantity_match",
+        ),
+    ],
+)
+def test_openai_parser_confidence(
+    original_text: str,
+    quantity: float | None,
+    unit: str | None,
+    food: str | None,
+    note: str,
+    qty_range: tuple[float, float],
+    unit_range: tuple[float, float],
+    food_range: tuple[float, float],
+    note_range: tuple[float, float],
+    unique_local_group_id: UUID4,
+    parsed_ingredient_data: tuple[list[IngredientFood], list[IngredientUnit]],  # required so database is populated
+):
+    """Test the _calculate_confidence method of OpenAIParser with various input scenarios."""
+
+    with session_context() as session:
+        from mealie.services.parser_services.openai.parser import OpenAIParser
+
+        parser = cast(OpenAIParser, get_parser(RegisteredParser.openai, unique_local_group_id, session))
+
+        # Create test ingredient
+        ingredient = RecipeIngredient(
+            original_text=original_text,
+            quantity=quantity,
+            unit=CreateIngredientUnit(name=unit) if unit else None,
+            food=CreateIngredientFood(name=food) if food else None,
+            note=note if note else None,
+        )
+
+        # Calculate confidence
+        confidence = parser._calculate_confidence(original_text, ingredient)
+
+        # All confidence values should be populated (not None) by the method
+        assert confidence.quantity is not None, "Quantity confidence should not be None"
+        assert confidence.unit is not None, "Unit confidence should not be None"
+        assert confidence.food is not None, "Food confidence should not be None"
+        assert confidence.comment is not None, "Comment confidence should not be None"
+        assert confidence.average is not None, "Average confidence should not be None"
+
+        # Range-based assertions to handle fuzzy matching variability
+        qty_min, qty_max = qty_range
+        assert qty_min <= confidence.quantity <= qty_max, (
+            f"Quantity confidence out of range: expected {qty_range}, got {confidence.quantity}"
+        )
+
+        unit_min, unit_max = unit_range
+        assert unit_min <= confidence.unit <= unit_max, (
+            f"Unit confidence out of range: expected {unit_range}, got {confidence.unit}"
+        )
+
+        food_min, food_max = food_range
+        assert food_min <= confidence.food <= food_max, (
+            f"Food confidence out of range: expected {food_range}, got {confidence.food}"
+        )
+
+        note_min, note_max = note_range
+        assert note_min <= confidence.comment <= note_max, (
+            f"Note confidence out of range: expected {note_range}, got {confidence.comment}"
+        )
+
+        # Check that average is calculated correctly
+        expected_avg = (confidence.quantity + confidence.unit + confidence.food + confidence.comment) / 4
+        assert abs(confidence.average - expected_avg) < 0.001, (
+            f"Average confidence mismatch: expected {expected_avg}, got {confidence.average}"
+        )

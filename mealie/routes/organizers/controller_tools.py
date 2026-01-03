@@ -18,7 +18,7 @@ router = APIRouter(prefix="/tools", tags=["Organizer: Tools"])
 class RecipeToolController(BaseUserController):
     @cached_property
     def repo(self):
-        return self.repos.tools.by_group(self.group_id)
+        return self.repos.tools
 
     @property
     def mixins(self) -> HttpRepo:
@@ -46,6 +46,7 @@ class RecipeToolController(BaseUserController):
 
     @router.put("/{item_id}", response_model=RecipeTool)
     def update_one(self, item_id: UUID4, data: RecipeToolCreate):
+        data = mapper.cast(data, RecipeToolSave, group_id=self.group_id)
         return self.mixins.update_one(data, item_id)
 
     @router.delete("/{item_id}", response_model=RecipeTool)

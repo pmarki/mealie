@@ -1,7 +1,6 @@
-import { useAsync, ref } from "@nuxtjs/composition-api";
 import { useAsyncKey } from "./use-utils";
 import { useUserApi } from "~/composables/api";
-import { ReadWebhook } from "~/lib/api/types/group";
+import type { ReadWebhook } from "~/lib/api/types/household";
 
 export const useGroupWebhooks = function () {
   const api = useUserApi();
@@ -11,15 +10,16 @@ export const useGroupWebhooks = function () {
   const actions = {
     getAll() {
       loading.value = true;
-      const units = useAsync(async () => {
+      const { data: units } = useAsyncData(useAsyncKey(), async () => {
         const { data } = await api.groupWebhooks.getAll();
 
         if (data) {
           return data.items;
-        } else {
+        }
+        else {
           return null;
         }
-      }, useAsyncKey());
+      });
 
       loading.value = false;
       return units;
@@ -38,7 +38,7 @@ export const useGroupWebhooks = function () {
       loading.value = true;
 
       const payload = {
-        enabled: false,
+        enabled: true,
         name: "New Webhook",
         url: "",
         scheduledTime: "00:00",
@@ -64,7 +64,6 @@ export const useGroupWebhooks = function () {
       newDt.setMinutes(Number(minutes));
 
       updateData.scheduledTime = `${pad(newDt.getUTCHours(), 2)}:${pad(newDt.getUTCMinutes(), 2)}`;
-      console.log(updateData.scheduledTime);
 
       const payload = {
         ...updateData,
@@ -85,6 +84,13 @@ export const useGroupWebhooks = function () {
       if (data) {
         this.refreshAll();
       }
+      loading.value = false;
+    },
+
+    async testOne(id: string | number) {
+      loading.value = true;
+      await api.groupWebhooks.testOne(id);
+      loading.value = false;
     },
   };
 

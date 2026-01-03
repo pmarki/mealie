@@ -7,15 +7,15 @@ You can use bookmarklets to generate a bookmark that will take your current loca
 You can use a [bookmarklet generator site](https://caiorss.github.io/bookmarklet-maker/) and the code below to generate a bookmark for your site. Just change the `http://localhost:8080` to your sites web address and follow the instructions.
 
 ```js
-var url = document.URL;
+var url = document.URL.endsWith('/') ?
+    document.URL.slice(0, -1) :
+    document.URL;
 var mealie = "http://localhost:8080";
 var group_slug = "home" // Change this to your group slug. You can obtain this from your URL after logging-in to Mealie
-var use_keywords= "&use_keywords=1" // Optional - use keywords from recipe - update to "" if you don't want that
-var edity = "&edit=1" // Optional - keep in edit mode - update to "" if you don't want that
 
 if (mealie.slice(-1) === "/") {
     mealie = mealie.slice(0, -1)
 }
-var dest = mealie + "/g/" + group_slug + "/r/create/url?recipe_import_url=" + url + use_keywords + edity;
+var dest = mealie + "/g/" + group_slug + "/r/create/url?recipe_import_url=" + url;
 window.open(dest, "_blank");
 ```

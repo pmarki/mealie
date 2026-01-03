@@ -37,6 +37,19 @@ def get_value_as_string_or_none(dictionary: dict, key: str):
         return None
 
 
+nutrition_map = {
+    "Calories": "calories",
+    "Fat": "fatContent",
+    "Saturated Fat": "saturatedFatContent",
+    "Cholesterol": "cholesterolContent",
+    "Sodium": "sodiumContent",
+    "Sugar": "sugarContent",
+    "Carbohydrate": "carbohydrateContent",
+    "Fiber": "fiberContent",
+    "Protein": "proteinContent",
+}
+
+
 class PlanToEatMigrator(BaseMigrator):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -58,30 +71,43 @@ class PlanToEatMigrator(BaseMigrator):
             MigrationAlias(key="prepTime", alias="Prep Time"),
             MigrationAlias(key="performTime", alias="Cook Time"),
             MigrationAlias(key="totalTime", alias="Total Time"),
-            MigrationAlias(key="tags", alias="Tags", func=split_by_comma),
             MigrationAlias(key="dateAdded", alias="Created At", func=lambda x: x[: x.find(" ")]),
         ]
 
     def _parse_recipe_nutrition_from_row(self, row: dict) -> dict:
         """Parses the nutrition data from the row"""
-
-        nut_dict: dict = {}
-
-        nut_dict["calories"] = get_value_as_string_or_none(row, "Calories")
-        nut_dict["fatContent"] = get_value_as_string_or_none(row, "Fat")
-        nut_dict["proteinContent"] = get_value_as_string_or_none(row, "Protein")
-        nut_dict["carbohydrateContent"] = get_value_as_string_or_none(row, "Carbohydrate")
-        nut_dict["fiberContent"] = get_value_as_string_or_none(row, "Fiber")
-        nut_dict["sodiumContent"] = get_value_as_string_or_none(row, "Sodium")
-        nut_dict["sugarContent"] = get_value_as_string_or_none(row, "Sugar")
+        nut_dict = {normalized_k: row[k] for k, normalized_k in nutrition_map.items() if k in row}
 
         return cleaner.clean_nutrition(nut_dict)
 
+    def _get_categories_from_row(self, row: dict) -> list[str]:
+        """Parses various category-like columns into categories"""
+
+        categories: list[str] = []
+        columns = ["Course", "Cuisine"]
+        for column in columns:
+            value = get_value_as_string_or_none(row, column)
+            if value:
+                categories.append(value)
+
+        return categories
+
+    def _get_tags_from_row(self, row: dict) -> list[str]:
+        tag_str = get_value_as_string_or_none(row, "Tags")
+        tags = split_by_comma(tag_str) or []
+        main_ingredient = get_value_as_string_or_none(row, "Main Ingredient")
+        if main_ingredient:
+            tags.append(main_ingredient)
+
+        return tags
+
     def _process_recipe_row(self, row: dict) -> dict:
-        """Reads a single recipe's row, parses its nutrition, and converts it to a dictionary"""
+        """Reads a single recipe's row, merges columns, and converts the row to a dictionary"""
 
         recipe_dict: dict = row
 
+        recipe_dict["recipeCategory"] = self._get_categories_from_row(row)
+        recipe_dict["tags"] = self._get_tags_from_row(row)
         recipe_dict["nutrition"] = self._parse_recipe_nutrition_from_row(row)
 
         return recipe_dict

@@ -1,5 +1,5 @@
 import enum
-from typing import Annotated, Any, Generic, TypeVar
+from typing import Annotated, Any
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from humps import camelize
@@ -7,8 +7,6 @@ from pydantic import UUID4, BaseModel, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from mealie.schema._mealie import MealieModel
-
-DataT = TypeVar("DataT", bound=BaseModel)
 
 
 class OrderDirection(str, enum.Enum):
@@ -31,9 +29,7 @@ class RecipeSearchQuery(MealieModel):
     _search_seed: str | None = None
 
 
-class PaginationQuery(MealieModel):
-    page: int = 1
-    per_page: int = 50
+class RequestQuery(MealieModel):
     order_by: str | None = None
     order_by_null_position: OrderByNullPosition | None = None
     order_direction: OrderDirection = OrderDirection.desc
@@ -47,7 +43,12 @@ class PaginationQuery(MealieModel):
         return pagination_seed
 
 
-class PaginationBase(BaseModel, Generic[DataT]):
+class PaginationQuery(RequestQuery):
+    page: int = 1
+    per_page: int = 50
+
+
+class PaginationBase[DataT: BaseModel](BaseModel):
     page: int = 1
     per_page: int = 10
     total: int = 0

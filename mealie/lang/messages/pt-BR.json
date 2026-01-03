@@ -3,10 +3,20 @@
         "server-error": "Ocorreu um erro inesperado"
     },
     "recipe": {
-        "unique-name-error": "O nome das receitas precisar ser único",
+        "unique-name-error": "Nomes de receitas devem ser únicos",
+        "recipe-created": "Receita criada",
+        "recipe-image-deleted": "Imagem da receita deletada",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "1 Xícara de Farinha",
+            "step-text": "Passos das receitas, assim como outros campos na página da receita, suportam sintaxe \"markdown\".\n\n**Adicione um link**\n\n[Meu Link](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "Produz",
+            "serves": "Porções",
+            "serving": "Porção",
+            "servings": "Porções",
+            "yield": "Rendimento",
+            "yields": "Rendimento"
         }
     },
     "mealplan": {
@@ -16,17 +26,18 @@
         "user-updated": "Usuário atualizado",
         "password-updated": "Senha atualizada",
         "invalid-current-password": "Senha atual inválida",
-        "ldap-update-password-unavailable": "Não é possível atualizar a senha, o usuário é controlado pelo LDAP"
+        "ldap-update-password-unavailable": "Impossível atualizar a senha, o usuário é controlado por LDAP"
     },
     "group": {
-        "report-deleted": "Relatório excluído"
+        "report-deleted": "Relatório excluído."
     },
     "exceptions": {
         "permission_denied": "Você não tem permissão para realizar esta ação",
+        "recursive-recipe-link": "Uma receita não pode referenciar a si mesma, diretamente ou indiretamente\n",
         "no-entry-found": "O recurso solicitado não foi encontrado",
         "integrity-error": "Erro de integridade de banco de dados",
         "username-conflict-error": "Este nome de usuário já está em uso",
-        "email-conflict-error": "Este email já está em uso"
+        "email-conflict-error": "Este e-mail já está em uso"
     },
     "notifications": {
         "generic-created": "{name} criado",
@@ -34,15 +45,39 @@
         "generic-created-with-url": "{name} foi criado, {url}",
         "generic-updated-with-url": "{name} foi atualizado, {url}",
         "generic-duplicated": "{name} foi duplicada",
-        "generic-deleted": "{name} foi excluído"
+        "generic-deleted": "{name} foi excluído",
+        "logged-out": "Desconectado"
     },
     "datetime": {
-        "year": "year|years",
-        "day": "day|days",
-        "hour": "hour|hours",
-        "minute": "minute|minutes",
-        "second": "second|seconds",
-        "millisecond": "millisecond|milliseconds",
-        "microsecond": "microsecond|microseconds"
+        "year": "ano|anos",
+        "day": "dia|dias",
+        "hour": "hora|horas",
+        "minute": "minuto|minutos",
+        "second": "segundo|segundos",
+        "millisecond": "milissegundo|milissegundos",
+        "microsecond": "microssegundo|microssegundos"
+    },
+    "emails": {
+        "password": {
+            "subject": "Mealie Senha Esquecida",
+            "header_text": "Esqueci minha senha",
+            "message_top": "Você pediu para redefinir a sua senha.",
+            "message_bottom": "Clique no botão acima para redefinir sua senha.",
+            "button_text": "Redefinir Senha"
+        },
+        "invitation": {
+            "subject": "Convite para se inscrever no Mealie",
+            "header_text": "Você foi convidado!",
+            "message_top": "Você foi convidado para participar do Mealie.",
+            "message_bottom": "Clique no botão acima para aceitar o convite.",
+            "button_text": "Aceitar Convite"
+        },
+        "test": {
+            "subject": "E-mail de Teste do Mealie",
+            "header_text": "E-mail de Teste",
+            "message_top": "Este é um e-mail de teste.",
+            "message_bottom": "Clique no botão acima para testar o e-mail.",
+            "button_text": "Abrir Mealie"
+        }
     }
 }

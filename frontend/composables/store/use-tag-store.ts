@@ -1,72 +1,32 @@
-import { reactive, ref, Ref } from "@nuxtjs/composition-api";
-import { usePublicStoreActions, useStoreActions } from "../partials/use-actions-factory";
-import { usePublicExploreApi } from "../api/api-client";
-import { useUserApi } from "~/composables/api";
-import { RecipeTag } from "~/lib/api/types/admin";
+import type { Composer } from "vue-i18n";
+import { useData, useReadOnlyStore, useStore } from "../partials/use-store-factory";
+import type { RecipeTag } from "~/lib/api/types/recipe";
+import { usePublicExploreApi, useUserApi } from "~/composables/api";
 
-const items: Ref<RecipeTag[]> = ref([]);
-const publicStoreLoading = ref(false);
-const storeLoading = ref(false);
+const store: Ref<RecipeTag[]> = ref([]);
+const loading = ref(false);
+const publicLoading = ref(false);
 
-export function useTagData() {
-  const data = reactive({
+export function resetTagStore() {
+  store.value = [];
+  loading.value = false;
+  publicLoading.value = false;
+}
+
+export const useTagData = function () {
+  return useData<RecipeTag>({
     id: "",
     name: "",
-    slug: undefined,
+    slug: "",
   });
+};
 
-  function reset() {
-    data.id = "";
-    data.name = "";
-    data.slug = undefined;
-  }
+export const useTagStore = function (i18n?: Composer) {
+  const api = useUserApi(i18n);
+  return useStore<RecipeTag>("tag", store, loading, api.tags);
+};
 
-  return {
-    data,
-    reset,
-  };
-}
-
-export function usePublicTagStore(groupSlug: string) {
-  const api = usePublicExploreApi(groupSlug).explore;
-  const loading = publicStoreLoading;
-
-  const actions = {
-    ...usePublicStoreActions<RecipeTag>(api.tags, items, loading),
-    flushStore() {
-      items.value = [];
-    },
-  };
-
-  if (!loading.value && (!items.value || items.value?.length === 0)) {
-    actions.getAll();
-  }
-
-  return {
-    items,
-    actions,
-    loading,
-  };
-}
-
-export function useTagStore() {
-  const api = useUserApi();
-  const loading = storeLoading;
-
-  const actions = {
-    ...useStoreActions<RecipeTag>(api.tags, items, loading),
-    flushStore() {
-      items.value = [];
-    },
-  };
-
-  if (!loading.value && (!items.value || items.value?.length === 0)) {
-    actions.getAll();
-  }
-
-  return {
-    items,
-    actions,
-    loading,
-  };
-}
+export const usePublicTagStore = function (groupSlug: string, i18n?: Composer) {
+  const api = usePublicExploreApi(groupSlug, i18n).explore;
+  return useReadOnlyStore<RecipeTag>("tag", store, publicLoading, api.tags);
+};

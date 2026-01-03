@@ -1,74 +1,38 @@
-import { reactive, ref, Ref } from "@nuxtjs/composition-api";
-import { usePublicExploreApi } from "../api/api-client";
-import { usePublicStoreActions, useStoreActions } from "../partials/use-actions-factory";
-import { useUserApi } from "~/composables/api";
-import { RecipeTool } from "~/lib/api/types/recipe";
+import type { Composer } from "vue-i18n";
+import { useData, useReadOnlyStore, useStore } from "../partials/use-store-factory";
+import type { RecipeTool } from "~/lib/api/types/recipe";
+import { usePublicExploreApi, useUserApi } from "~/composables/api";
 
-const toolStore: Ref<RecipeTool[]> = ref([]);
-const publicStoreLoading = ref(false);
-const storeLoading = ref(false);
+interface RecipeToolWithOnHand extends RecipeTool {
+  onHand: boolean;
+}
 
-export function useToolData() {
-  const data = reactive({
+const store: Ref<RecipeTool[]> = ref([]);
+const loading = ref(false);
+const publicLoading = ref(false);
+
+export function resetToolStore() {
+  store.value = [];
+  loading.value = false;
+  publicLoading.value = false;
+}
+
+export const useToolData = function () {
+  return useData<RecipeToolWithOnHand>({
     id: "",
     name: "",
-    slug: undefined,
+    slug: "",
     onHand: false,
+    householdsWithTool: [],
   });
+};
 
-  function reset() {
-    data.id = "";
-    data.name = "";
-    data.slug = undefined;
-    data.onHand = false;
-  }
+export const useToolStore = function (i18n?: Composer) {
+  const api = useUserApi(i18n);
+  return useStore<RecipeTool>("tool", store, loading, api.tools);
+};
 
-  return {
-    data,
-    reset,
-  };
-}
-
-export function usePublicToolStore(groupSlug: string) {
-  const api = usePublicExploreApi(groupSlug).explore;
-  const loading = publicStoreLoading;
-
-  const actions = {
-    ...usePublicStoreActions<RecipeTool>(api.tools, toolStore, loading),
-    flushStore() {
-      toolStore.value = [];
-    },
-  };
-
-  if (!loading.value && (!toolStore.value || toolStore.value?.length === 0)) {
-    actions.getAll();
-  }
-
-  return {
-    items: toolStore,
-    actions,
-    loading,
-  };
-}
-
-export function useToolStore() {
-  const api = useUserApi();
-  const loading = storeLoading;
-
-  const actions = {
-    ...useStoreActions<RecipeTool>(api.tools, toolStore, loading),
-    flushStore() {
-      toolStore.value = [];
-    },
-  };
-
-  if (!loading.value && (!toolStore.value || toolStore.value?.length === 0)) {
-    actions.getAll();
-  }
-
-  return {
-    items: toolStore,
-    actions,
-    loading,
-  };
-}
+export const usePublicToolStore = function (groupSlug: string, i18n?: Composer) {
+  const api = usePublicExploreApi(groupSlug, i18n).explore;
+  return useReadOnlyStore<RecipeTool>("tool", store, publicLoading, api.tools);
+};

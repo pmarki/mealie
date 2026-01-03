@@ -1,6 +1,5 @@
 import abc
-from datetime import datetime, timedelta, timezone
-from typing import Generic, TypeVar
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from sqlalchemy.orm.session import Session
@@ -13,10 +12,8 @@ ALGORITHM = "HS256"
 ISS = "mealie"
 remember_me_duration = timedelta(days=14)
 
-T = TypeVar("T")
 
-
-class AuthProvider(Generic[T], metaclass=abc.ABCMeta):
+class AuthProvider[T](metaclass=abc.ABCMeta):
     """Base Authentication Provider interface"""
 
     def __init__(self, session: Session, data: T) -> None:
@@ -33,8 +30,8 @@ class AuthProvider(Generic[T], metaclass=abc.ABCMeta):
         settings = get_app_settings()
 
         duration = timedelta(hours=settings.TOKEN_TIME)
-        if remember_me and remember_me_duration > duration:
-            duration = remember_me_duration
+        if remember_me:
+            duration = max(remember_me_duration, duration)
 
         return AuthProvider.create_access_token({"sub": str(user.id)}, duration)
 
@@ -45,18 +42,21 @@ class AuthProvider(Generic[T], metaclass=abc.ABCMeta):
         to_encode = data.copy()
         expires_delta = expires_delta or timedelta(hours=settings.TOKEN_TIME)
 
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = datetime.now(UTC) + expires_delta
 
         to_encode["exp"] = expire
         to_encode["iss"] = ISS
-        return (jwt.encode(to_encode, settings.SECRET, algorithm=ALGORITHM), expires_delta)
+        return (
+            jwt.encode(to_encode, settings.SECRET, algorithm=ALGORITHM),
+            expires_delta,
+        )
 
     def try_get_user(self, username: str) -> PrivateUser | None:
         """Try to get a user from the database, first trying username, then trying email"""
         if self.__has_tried_user:
             return self.user
 
-        db = get_repositories(self.session)
+        db = get_repositories(self.session, group_id=None, household_id=None)
 
         user = user = db.users.get_one(username, "username", any_case=True)
         if not user:
@@ -66,6 +66,6 @@ class AuthProvider(Generic[T], metaclass=abc.ABCMeta):
         return user
 
     @abc.abstractmethod
-    async def authenticate(self) -> tuple[str, timedelta] | None:
+    def authenticate(self) -> tuple[str, timedelta] | None:
         """Attempt to authenticate a user"""
         raise NotImplementedError

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/register")
 
 @controller(router)
 class RegistrationController(BasePublicController):
-    event_bus: EventBusService = Depends(EventBusService.create)
+    event_bus: EventBusService = Depends(EventBusService.as_dependency)
 
     @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
     def register_new_user(self, data: CreateUserRegistration):
@@ -29,7 +29,7 @@ class RegistrationController(BasePublicController):
 
         registration_service = RegistrationService(
             self.logger,
-            get_repositories(self.session),
+            get_repositories(self.session, group_id=None, household_id=None),
             self.translator,
         )
 
@@ -38,6 +38,7 @@ class RegistrationController(BasePublicController):
         self.event_bus.dispatch(
             integration_id="registration",
             group_id=result.group_id,
+            household_id=result.household_id,
             event_type=EventTypes.user_signup,
             document_data=EventUserSignupData(username=result.username, email=result.email),
         )

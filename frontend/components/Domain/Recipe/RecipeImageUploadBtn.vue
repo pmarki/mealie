@@ -1,33 +1,73 @@
 <template>
   <div class="text-center">
-    <v-menu v-model="menu" offset-y top nudge-top="6" :close-on-content-click="false">
-      <template #activator="{ on, attrs }">
-        <v-btn color="accent" dark v-bind="attrs" v-on="on">
-          <v-icon left>
+    <v-menu
+      v-model="menu"
+      offset-y
+      top
+      nudge-top="6"
+      :close-on-content-click="false"
+    >
+      <template #activator="{ props: activatorProps }">
+        <v-btn
+          color="accent"
+          dark
+          v-bind="activatorProps"
+        >
+          <v-icon start>
             {{ $globals.icons.fileImage }}
           </v-icon>
           {{ $t("general.image") }}
         </v-btn>
       </template>
       <v-card width="400">
-        <v-card-title class="headline flex mb-0">
+        <v-card-title class="headline flex-wrap mb-0">
           <div>
             {{ $t("recipe.recipe-image") }}
           </div>
-          <AppButtonUpload
-            class="ml-auto"
-            url="none"
-            file-name="image"
-            :text-btn="false"
-            :post="false"
-            @uploaded="uploadImage"
-          />
+          <div class="d-flex gap-2">
+            <AppButtonUpload
+              url="none"
+              file-name="image"
+              :text-btn="false"
+              :post="false"
+              @uploaded="uploadImage"
+            />
+            <BaseButton
+              class="ml-2"
+              delete
+              @click="dialogDeleteImage = true"
+            />
+            <BaseDialog
+              v-model="dialogDeleteImage"
+              :title="$t('recipe.delete-image')"
+              :icon="$globals.icons.alertCircle"
+              color="error"
+              can-delete
+              @delete="deleteImage"
+            >
+              <v-card-text>
+                {{ $t("recipe.delete-image-confirmation") }}
+              </v-card-text>
+            </BaseDialog>
+          </div>
         </v-card-title>
         <v-card-text class="mt-n5">
           <div>
-            <v-text-field v-model="url" :label="$t('general.url')" class="pt-5" clearable :messages="messages">
-              <template #append-outer>
-                <v-btn class="ml-2" color="primary" :loading="loading" :disabled="!slug" @click="getImageFromURL">
+            <v-text-field
+              v-model="url"
+              :label="$t('general.url')"
+              class="pt-5"
+              clearable
+              :messages="messages"
+            >
+              <template #append>
+                <v-btn
+                  class="ml-2"
+                  color="primary"
+                  :loading="loading"
+                  :disabled="!slug"
+                  @click="getImageFromURL"
+                >
                   {{ $t("general.get") }}
                 </v-btn>
               </template>
@@ -39,53 +79,62 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, reactive, toRefs, useContext } from "@nuxtjs/composition-api";
+<script setup lang="ts">
+import { alert } from "~/composables/use-toast";
 import { useUserApi } from "~/composables/api";
 
-const REFRESH_EVENT = "refresh";
 const UPLOAD_EVENT = "upload";
+const DELETE_EVENT = "delete";
 
-export default defineComponent({
-  props: {
-    slug: {
-      type: String,
-      required: true,
-    },
-  },
-  setup(props, context) {
-    const state = reactive({
-      url: "",
-      loading: false,
-      menu: false,
-    })
+const props = defineProps<{ slug: string }>();
 
-    function uploadImage(fileObject: File) {
-      context.emit(UPLOAD_EVENT, fileObject);
-      state.menu = false;
-    }
+const emit = defineEmits<{
+  refresh: [];
+  upload: [fileObject: File];
+  delete: [];
+}>();
 
-    const api = useUserApi();
-    async function getImageFromURL() {
-      state.loading = true;
-      if (await api.recipes.updateImagebyURL(props.slug, state.url)) {
-        context.emit(REFRESH_EVENT);
-      }
-      state.loading = false;
-      state.menu = false;
-    }
+const i18n = useI18n();
+const api = useUserApi();
 
-    const { i18n } = useContext();
-    const messages = props.slug ? [""] : [i18n.t("recipe.save-recipe-before-use")];
+const url = ref("");
+const loading = ref(false);
+const menu = ref(false);
+const dialogDeleteImage = ref(false);
 
-    return {
-      ...toRefs(state),
-      uploadImage,
-      getImageFromURL,
-      messages,
-    };
-  },
-});
+function uploadImage(fileObject: File) {
+  emit(UPLOAD_EVENT, fileObject);
+  menu.value = false;
+}
+
+async function deleteImage() {
+  loading.value = true;
+  try {
+    await api.recipes.deleteImage(props.slug);
+    emit(DELETE_EVENT);
+    menu.value = false;
+  }
+  catch (e) {
+    alert.error(i18n.t("events.something-went-wrong"));
+    console.error("Failed to delete image", e);
+  }
+  finally {
+    loading.value = false;
+  }
+}
+
+async function getImageFromURL() {
+  loading.value = true;
+  if (await api.recipes.updateImagebyURL(props.slug, url.value)) {
+    emit(DELETE_EVENT);
+  }
+  loading.value = false;
+  menu.value = false;
+}
+
+const messages = computed(() =>
+  props.slug ? [""] : [i18n.t("recipe.save-recipe-before-use")],
+);
 </script>
 
 <style lang="scss" scoped></style>

@@ -1,5 +1,5 @@
 /* tslint:disable */
-/* eslint-disable */
+
 /**
 /* This file was automatically generated from pydantic models by running pydantic2ts.
 /* Do not modify it by hand - just update the pydantic models and then re-run the script
@@ -10,16 +10,23 @@ export interface AdminAboutInfo {
   version: string;
   demoStatus: boolean;
   allowSignup: boolean;
+  allowPasswordLogin: boolean;
+  defaultGroupSlug?: string | null;
+  defaultHouseholdSlug?: string | null;
   enableOidc: boolean;
   oidcRedirect: boolean;
   oidcProviderName: string;
   noAuthLogin: boolean;
+  enableOpenai: boolean;
+  enableOpenaiImageServices: boolean;
+  tokenTime: number;
   versionLatest: string;
   apiPort: number;
   apiDocs: boolean;
   dbType: string;
-  dbUrl?: string;
+  dbUrl?: string | null;
   defaultGroup: string;
+  defaultHousehold: string;
   buildId: string;
   recipeScraperVersion: string;
 }
@@ -37,11 +44,16 @@ export interface AppInfo {
   version: string;
   demoStatus: boolean;
   allowSignup: boolean;
-  defaultGroupSlug?: string;
+  allowPasswordLogin: boolean;
+  defaultGroupSlug?: string | null;
+  defaultHouseholdSlug?: string | null;
   enableOidc: boolean;
   oidcRedirect: boolean;
   oidcProviderName: string;
   noAuthLogin: boolean;
+  enableOpenai: boolean;
+  enableOpenaiImageServices: boolean;
+  tokenTime: number;
 }
 export interface AppStartupInfo {
   isFirstLogin: boolean;
@@ -50,6 +62,7 @@ export interface AppStartupInfo {
 export interface AppStatistics {
   totalRecipes: number;
   totalUsers: number;
+  totalHouseholds: number;
   totalGroups: number;
   uncategorizedRecipes: number;
   untaggedRecipes: number;
@@ -82,6 +95,7 @@ export interface CheckAppConfig {
   emailReady: boolean;
   ldapReady: boolean;
   oidcReady: boolean;
+  enableOpenai: boolean;
   baseUrlSet: boolean;
   isUpToDate: boolean;
 }
@@ -91,83 +105,23 @@ export interface ChowdownURL {
 export interface CommentImport {
   name: string;
   status: boolean;
-  exception?: string;
+  exception?: string | null;
 }
 export interface CreateBackup {
-  tag?: string;
+  tag?: string | null;
   options: BackupOptions;
-  templates?: string[];
+  templates?: string[] | null;
 }
-export interface CustomPageBase {
-  name: string;
-  slug?: string;
-  position: number;
-  categories?: RecipeCategoryResponse[];
-}
-export interface RecipeCategoryResponse {
-  name: string;
-  id: string;
-  slug: string;
-  recipes?: RecipeSummary[];
-}
-export interface RecipeSummary {
-  id?: string;
-  userId?: string;
-  groupId?: string;
-  name?: string;
-  slug?: string;
-  image?: unknown;
-  recipeYield?: string;
-  totalTime?: string;
-  prepTime?: string;
-  cookTime?: string;
-  performTime?: string;
-  description?: string;
-  recipeCategory?: RecipeCategory[];
-  tags?: RecipeTag[];
-  tools?: RecipeTool[];
-  rating?: number;
-  orgURL?: string;
-  dateAdded?: string;
-  dateUpdated?: string;
-  createdAt?: string;
-  updateAt?: string;
-  lastMade?: string;
-}
-export interface RecipeCategory {
-  id?: string;
-  name: string;
-  slug: string;
-}
-export interface RecipeTag {
-  id?: string;
-  name: string;
-  slug: string;
-}
-export interface RecipeTool {
-  id: string;
-  name: string;
-  slug: string;
-  onHand?: boolean;
-}
-export interface CustomPageImport {
-  name: string;
-  status: boolean;
-  exception?: string;
-}
-export interface CustomPageOut {
-  name: string;
-  slug?: string;
-  position: number;
-  categories?: RecipeCategoryResponse[];
-  id: number;
+export interface DebugResponse {
+  success: boolean;
+  response?: string | null;
 }
 export interface EmailReady {
   ready: boolean;
 }
 export interface EmailSuccess {
   success: boolean;
-  error?: string;
+  error?: string | null;
 }
 export interface EmailTest {
   email: string;
@@ -175,12 +129,12 @@ export interface EmailTest {
 export interface GroupImport {
   name: string;
   status: boolean;
-  exception?: string;
+  exception?: string | null;
 }
 export interface ImportBase {
   name: string;
   status: boolean;
-  exception?: string;
+  exception?: string | null;
 }
 export interface ImportJob {
   recipes?: boolean;
@@ -215,35 +169,26 @@ export interface MigrationFile {
 export interface MigrationImport {
   name: string;
   status: boolean;
-  exception?: string;
-  slug?: string;
+  exception?: string | null;
+  slug?: string | null;
 }
 export interface Migrations {
   type: string;
   files?: MigrationFile[];
 }
-export interface NotificationImport {
-  name: string;
-  status: boolean;
-  exception?: string;
-}
-export interface OIDCInfo {
-  configurationUrl?: string;
-  clientId?: string;
-}
 export interface RecipeImport {
   name: string;
   status: boolean;
-  exception?: string;
-  slug?: string;
+  exception?: string | null;
+  slug?: string | null;
 }
 export interface SettingsImport {
   name: string;
   status: boolean;
-  exception?: string;
+  exception?: string | null;
 }
 export interface UserImport {
   name: string;
   status: boolean;
-  exception?: string;
+  exception?: string | null;
 }

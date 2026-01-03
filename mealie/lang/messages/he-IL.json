@@ -3,14 +3,24 @@
         "server-error": "אירעה שגיאה בלתי צפויה"
     },
     "recipe": {
-        "unique-name-error": "שמות מתכונים חייבים להיות יחודיים",
+        "unique-name-error": "שמות מתכונים חייבים להיות ייחודיים",
+        "recipe-created": "מתכון נוצר",
+        "recipe-image-deleted": "Recipe image deleted",
         "recipe-defaults": {
-            "ingredient-note": "1 Cup Flour",
-            "step-text": "Recipe steps as well as other fields in the recipe page support markdown syntax.\n\n**Add a link**\n\n[My Link](https://demo.mealie.io)\n"
+            "ingredient-note": "כוס קמח",
+            "step-text": "שלבי המתכון, כמו גם שדות אחרים בעמוד המתכון, תומכים בתחביר markdown.\n\n**הוספת קישור**\n\n[הקישור שלי](https://demo.mealie.io)\n"
+        },
+        "servings-text": {
+            "makes": "תוצרת",
+            "serves": "מנות",
+            "serving": "מנה",
+            "servings": "מנות",
+            "yield": "כמות",
+            "yields": "כמויות"
         }
     },
     "mealplan": {
-        "no-recipes-match-your-rules": "אין מתכון שמתאים לחוקים שלך"
+        "no-recipes-match-your-rules": "אין מתכון מתאים לחוקים שלך"
     },
     "user": {
         "user-updated": "המשתמש עודכן",
@@ -19,10 +29,11 @@
         "ldap-update-password-unavailable": "כשלון בעדכון סיסמא, המשתמש נשלט ע״י LDAP"
     },
     "group": {
-        "report-deleted": "דוח נמחק."
+        "report-deleted": "הדיווח נמחק."
     },
     "exceptions": {
         "permission_denied": "אין לך הרשאות לביצוע פעולה זו",
+        "recursive-recipe-link": "A recipe cannot reference itself, either directly or indirectly",
         "no-entry-found": "המשאב המבוקש לא נמצא",
         "integrity-error": "שגיאת שלמות מסד נתונים",
         "username-conflict-error": "שם המשתמש הזה כבר נמצא בשימוש",
@@ -34,15 +45,39 @@
         "generic-created-with-url": "{name} נוצר, {url}",
         "generic-updated-with-url": "{name} עודכן, {url}",
         "generic-duplicated": "{name} שוכפל",
-        "generic-deleted": "{name} נמחק"
+        "generic-deleted": "{name} נמחק",
+        "logged-out": "התנתקת"
     },
     "datetime": {
-        "year": "year|years",
-        "day": "day|days",
-        "hour": "hour|hours",
-        "minute": "minute|minutes",
-        "second": "second|seconds",
-        "millisecond": "millisecond|milliseconds",
-        "microsecond": "microsecond|microseconds"
+        "year": "שנה|שנים",
+        "day": "יום|ימים",
+        "hour": "שעה|שעות",
+        "minute": "דקה|דקות",
+        "second": "שניה|שניות",
+        "millisecond": "מילישניה|מילישניות",
+        "microsecond": "מיקרושניה|מיקרושניות"
+    },
+    "emails": {
+        "password": {
+            "subject": "שכחת סיסמה ל-Mealie",
+            "header_text": "שכחת סיסמה",
+            "message_top": "ביקשת לאפס את הסיסמה שלך.",
+            "message_bottom": "נא ללחוץ על הכפתור למעלה לאיפוס הסיסמה.",
+            "button_text": "איפוס סיסמה"
+        },
+        "invitation": {
+            "subject": "הזמנת הצטרפות ל-Mealie",
+            "header_text": "הוזמנת!",
+            "message_top": "הוזמנת להצטרף ל-Mealie.",
+            "message_bottom": "נא ללחוץ על הכפתור למעלה לקבלת ההזמנה.",
+            "button_text": "אישור ההזמנה"
+        },
+        "test": {
+            "subject": "מייל בדיקה מ-Mealie",
+            "header_text": "מייל בדיקה",
+            "message_top": "זהו מייל בדיקה.",
+            "message_bottom": "נא ללחוץ על הכפתור למעלה כדי לבדוק את המייל.",
+            "button_text": "פתיחת Mealie"
+        }
     }
 }
