@@ -283,11 +283,11 @@ export default defineNuxtComponent({
 
     const { passwordIcon, inputType, togglePasswordShow } = usePasswordField();
 
-    const allowSignup = computed(() => appInfo.value?.allowSignup || false);
-    const allowOidc = computed(() => appInfo.value?.enableOidc || false);
-    const oidcRedirect = computed(() => appInfo.value?.oidcRedirect || false);
-    const oidcProviderName = computed(() => appInfo.value?.oidcProviderName || "OAuth")
-    const noAuthLogin = computed(() => appInfo.value?.noAuthLogin || false);
+    // const allowSignup = computed(() => $appInfo.value?.allowSignup || false);
+    // const allowOidc = computed(() => $appInfo.value?.enableOidc || false);
+    // const oidcRedirect = computed(() => $appInfo.value?.oidcRedirect || false);
+    // const oidcProviderName = computed(() => $appInfo.value?.oidcProviderName || "OAuth")
+    const noAuthLogin = computed(() => $appInfo.noAuthLogin || false);
 
     whenever(
       () => noAuthLogin.value,
