@@ -21,6 +21,7 @@ class AppInfo(MealieModel):
     enable_oidc: bool
     oidc_redirect: bool
     oidc_provider_name: str
+    no_auth_login: bool
     enable_openai: bool
     enable_openai_image_services: bool
     token_time: int

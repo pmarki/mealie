@@ -11,7 +11,9 @@ from mealie.core.security.hasher import get_hasher
 from mealie.core.security.providers.auth_provider import AuthProvider
 from mealie.core.security.providers.credentials_provider import CredentialsProvider
 from mealie.core.security.providers.ldap_provider import LDAPProvider
-from mealie.schema.user.auth import CredentialsRequest, CredentialsRequestForm
+from mealie.core.security.providers.no_auth_provider import NoAuthProvider
+from mealie.core.security.providers.openid_provider import OpenIDProvider
+from mealie.schema.user.auth import CredentialsRequest, CredentialsRequestForm, OIDCRequest
 
 ALGORITHM = "HS256"
 
@@ -22,6 +24,12 @@ def get_auth_provider(session: Session, data: CredentialsRequestForm) -> AuthPro
     settings = get_app_settings()
 
     credentials_request = CredentialsRequest(**data.__dict__)
+    if settings.NO_AUTH_ENABLED:
+        return NoAuthProvider(session, credentials_request)
+
+    if request.cookies.get("mealie.auth.strategy") == "oidc":
+        return OpenIDProvider(session, OIDCRequest(id_token=request.cookies.get("mealie.auth._id_token.oidc")))
+
     if settings.LDAP_ENABLED:
         return LDAPProvider(session, credentials_request)
 

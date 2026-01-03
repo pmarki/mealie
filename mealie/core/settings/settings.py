@@ -290,6 +290,11 @@ class AppSettings(AppLoggingSettings):
         return FeatureDetails(enabled=not_none, description=description)
 
     # ===============================================
+    # No auth Configuration
+
+    NO_AUTH_ENABLED: bool = False
+
+    # ===============================================
     # LDAP Configuration
 
     LDAP_AUTH_ENABLED: bool = False

@@ -283,6 +283,18 @@ export default defineNuxtComponent({
 
     const { passwordIcon, inputType, togglePasswordShow } = usePasswordField();
 
+    const allowSignup = computed(() => appInfo.value?.allowSignup || false);
+    const allowOidc = computed(() => appInfo.value?.enableOidc || false);
+    const oidcRedirect = computed(() => appInfo.value?.oidcRedirect || false);
+    const oidcProviderName = computed(() => appInfo.value?.oidcProviderName || "OAuth")
+    const noAuthLogin = computed(() => appInfo.value?.noAuthLogin || false);
+
+    whenever(
+      () => noAuthLogin.value,
+      () => noAuthAuthenticate(),
+      {immediate: true}
+    )
+
     whenever(
       () => $appInfo.enableOidc && $appInfo.oidcRedirect && !isCallback() && !isDirectLogin() /* && !$auth.check().valid */,
       () => oidcAuthenticate(),
@@ -303,6 +315,14 @@ export default defineNuxtComponent({
     function isDirectLogin() {
       const params = new URLSearchParams(window.location.search);
       return params.has("direct") && params.get("direct") === "1";
+    }
+
+    async function noAuthAuthenticate() {
+      try {
+            await $auth.loginWith("local", { data: {"username": "*", "password": "*"}})
+        } catch (error) {
+            alert.error(i18n.t("events.something-went-wrong") as string);
+        }
     }
 
     async function oidcAuthenticate(callback = false) {

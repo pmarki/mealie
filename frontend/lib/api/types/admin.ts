@@ -16,6 +16,7 @@ export interface AdminAboutInfo {
   enableOidc: boolean;
   oidcRedirect: boolean;
   oidcProviderName: string;
+  noAuthLogin: boolean;
   enableOpenai: boolean;
   enableOpenaiImageServices: boolean;
   tokenTime: number;
@@ -49,6 +50,7 @@ export interface AppInfo {
   enableOidc: boolean;
   oidcRedirect: boolean;
   oidcProviderName: string;
+  noAuthLogin: boolean;
   enableOpenai: boolean;
   enableOpenaiImageServices: boolean;
   tokenTime: number;
